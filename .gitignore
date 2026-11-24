@@ -1,0 +1,17 @@
+# Root dependencies (vendor/ ships its own node_modules on purpose — see THIRD_PARTY.md)
+/node_modules/
+
+# Local caches, scratch space and test artifacts
+/.cache/
+/.npm-cache/
+/.tmp/
+/.work/
+
+# Build output (npm pack tarballs)
+/dist/
+*.tgz
+
+# Logs and editor/OS junk
+*.log
+.DS_Store
+Thumbs.db

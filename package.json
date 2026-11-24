@@ -1,0 +1,62 @@
+{
+  "name": "pi-ego-browser",
+  "version": "0.1.7",
+  "description": "Browser tools for Pi, backed by a vendored Ego runtime: open pages, read numbered elements, click, fill, manage tabs, take screenshots into a content-addressed attachment library, hand the browser to the user, and choose the screenshot folder with Windows' own dialog.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "browser",
+    "automation",
+    "ego",
+    "cdp"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "win32"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/ego-browser.js"
+    ]
+  },
+  "files": [
+    "extensions/",
+    "src/",
+    "vendor/",
+    "README.md",
+    "THIRD_PARTY.md"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "typebox": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typebox": "1.3.27"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:unit": "node test/run-unit.mjs",
+    "test:acceptance": "node tools/acceptance.mjs",
+    "pack:build": "npm pack --ignore-scripts --pack-destination dist",
+    "pack:check": "node tools/check-pack.mjs",
+    "pack:load": "node tools/check-load.mjs",
+    "smoke:pi": "node tools/iso-pi-smoke.mjs",
+    "probe:runtime": "node tools/probe-runtime.mjs"
+  }
+}

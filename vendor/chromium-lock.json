@@ -1,0 +1,12 @@
+{
+  "channel": "Chrome for Testing (stable, official Google build)",
+  "version": "158.0.8127.88",
+  "platform": "win64",
+  "url": "https://storage.googleapis.com/chrome-for-testing-public/158.0.8127.88/win64/chrome-win64.zip",
+  "size": 214931627,
+  "sha256": "fda73ca9ffc7f02c5c85165cb472152540a76a7cecd8ec11314ea781e4454109",
+  "executableRelativePath": "chrome-win64/chrome.exe",
+  "pinnedAt": "2026-11-24",
+  "source": "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json",
+  "note": "Chrome for Testing does not publish per-file checksums, so the SHA-256 here is the hash of the artifact this package was built and verified against. A download that does not match it is rejected and never enabled."
+}
