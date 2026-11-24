@@ -132,10 +132,10 @@ function withoutTrailingSeparator(value) {
  */
 export function normalizeRootPath(value) {
   const text = String(value ?? "").trim();
-  if (!text) throw new AttachmentError("ATTACHMENT_PATH_INVALID", "附件目录不能为空。");
+  if (!text) throw new AttachmentError("ATTACHMENT_PATH_INVALID", "Enter a screenshot folder.");
   const expanded = text.replace(/^~(?=$|[\\/])/, () => homedir());
   if (!isAbsolute(expanded)) {
-    throw new AttachmentError("ATTACHMENT_PATH_INVALID", `附件目录必须是绝对路径，收到的是“${text}”。`);
+    throw new AttachmentError("ATTACHMENT_PATH_INVALID", `The screenshot folder must be an absolute path. Received: ${text}.`);
   }
   return withoutTrailingSeparator(resolve(expanded));
 }
@@ -406,14 +406,14 @@ export class AttachmentLibrary {
     const path = normalizeRootPath(dir);
     const before = statOf(path);
     if (before && !before.isDirectory()) {
-      throw new AttachmentError("ATTACHMENT_PATH_IS_FILE", `“${path}”是一个文件，不是目录；换一个目录再设置。`);
+      throw new AttachmentError("ATTACHMENT_PATH_IS_FILE", `${path} is a file. Choose a folder.`);
     }
     try {
       this.#useLibraryDir(path, { create: true });
     } catch (error) {
       throw new AttachmentError(
         "ATTACHMENT_UNWRITABLE",
-        `“${path}”无法写入（${describeFileError(error)}）；选择保持不变。`,
+        `Could not write to ${path} (${describeFileError(error)}). The screenshot folder is unchanged.`,
         { path, reason: describeFileError(error) },
       );
     }
@@ -513,7 +513,7 @@ export class AttachmentLibrary {
     if (!chosen) {
       throw new AttachmentError(
         "ATTACHMENT_UNWRITABLE",
-        `附件库不可写，这张截图无法保存：\n${failures.map((entry) => `- ${entry.path}：${entry.reason}`).join("\n")}\n在 /ego-settings 里用「截图附件目录」换一个位置（非交互环境：/ego-settings attachments set <可写目录>），或修好上面的目录后重试。`,
+        `附件库不可写，这张截图无法保存：\n${failures.map((entry) => `- ${entry.path}：${entry.reason}`).join("\n")}\n在 /ego-settings 里用「Screenshot Folder」换一个位置（非交互环境：/ego-settings attachments set <可写目录>），或修好上面的目录后重试。`,
         { failures },
       );
     }

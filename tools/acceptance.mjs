@@ -358,7 +358,7 @@ async function phase1({ pi, tarball, fixture }) {
       `Pi reported a loading problem: ${err.slice(0, 800)}`,
     );
     const handled = responses.find((entry) => entry.command === "prompt");
-    const sawStatusText = /浏览器：/.test(out);
+    const sawStatusText = /Browser:/.test(out);
     return {
       command: command.name,
       commandPath: command.sourceInfo?.path ?? null,
@@ -497,7 +497,7 @@ async function phase2({ pi, tarball, fixture }) {
         "browser_handoff",
       );
       check(handoff.text.includes("/ego-settings"), `hand-off does not name /ego-settings: ${handoff.text}`);
-      check(handoff.text.includes("恢复浏览器控制"), `hand-off does not name the row that resumes: ${handoff.text}`);
+      check(handoff.text.includes("Resume Browser Control"), `hand-off does not name the row that resumes: ${handoff.text}`);
       const refused = await invoke(api, "browser_open", { url: homeUrl }, sessionA);
       check(refused.isError, "browser tools must refuse while the user has control");
       check(refused.text.includes("/ego-settings"), `refusal message should point at /ego-settings: ${refused.text}`);
@@ -536,13 +536,13 @@ async function phase2({ pi, tarball, fixture }) {
 
     await step("2.4 /ego-settings resume takes control back and re-reads the same tab", async () => {
       const resumed = await invokeCommand(api, "ego-settings", "resume", sessionA);
-      check(resumed.text.includes("已恢复浏览器控制权"), `resume output unexpected: ${resumed.text}`);
+      check(resumed.text.includes("Resumed browser control"), `resume output unexpected: ${resumed.text}`);
       check(resumed.text.includes("edited by user"), `resume snapshot misses the hand edit:\n${resumed.text}`);
       check(resumed.text.includes("user@example.com"), `resume snapshot misses the hand-typed value:\n${resumed.text}`);
       resumeSnapshot = resumed.text;
       const status = await invokeCommand(api, "ego-settings", "status", sessionA);
-      check(status.text.includes("浏览器"), `status output unexpected: ${status.text}`);
-      check(status.text.includes("Pi 持有"), `status should report agent control after resume: ${status.text}`);
+      check(status.text.includes("Browser:"), `status output unexpected: ${status.text}`);
+      check(status.text.includes("Control: Pi"), `status should report agent control after resume: ${status.text}`);
       return { resumeHead: resumed.text.split("\n").slice(0, 4), statusHead: status.text.split("\n")[0] };
     });
 
@@ -909,7 +909,7 @@ async function phase4({ pi, tarball, fixture }) {
       const results = entries.filter((entry) => entry.type === "message" && entry.message.role === "toolResult");
       const refused = results[results.length - 1];
       checkEq(refused.message.isError, true, "an unknown ID must be reported as an error");
-      check(/本会话里没有附件/.test(refused.message.content[0].text), `unexpected refusal text: ${refused.message.content[0].text}`);
+      check(/No screenshot with ID/.test(refused.message.content[0].text), `unexpected refusal text: ${refused.message.content[0].text}`);
       return { lookbackImages: 1, refusal: "ATTACHMENT_NOT_IN_SESSION" };
     });
 
@@ -942,7 +942,7 @@ async function phase4({ pi, tarball, fixture }) {
     await step("4.5 /ego-settings attachments set keeps spaces, persists, falls back and recovers", async () => {
       const preferred = join(STATE, "p4 首选 目录", "ego shots");
       const set = await invokeCommand(loaded.api, "ego-settings", `attachments set "${preferred}"`, context.sessionKey);
-      check(/首选附件目录已设置/.test(set.text), `set failed: ${set.text}`);
+      check(/Preferred screenshot folder set/.test(set.text), `set failed: ${set.text}`);
       const configFile = join(stateDir, "attachments-config.json");
       checkEq(JSON.parse(readFileSync(configFile, "utf8")).preferred, preferred, "the preferred directory was not persisted");
 
@@ -971,7 +971,7 @@ async function phase4({ pi, tarball, fixture }) {
       let fallbackRef;
       try {
         const broken = await invokeCommand(reopened.api, "ego-settings", "attachments", context.sessionKey);
-        check(/首选目录不可写|首选目录[^\n]*(?:离线|不可用|不存在)/.test(broken.text), `the list should report the broken preferred directory:\n${broken.text}`);
+        check(/Preferred folder is not writable/.test(broken.text), `the list should report the broken preferred directory:\n${broken.text}`);
         check(!existsSync(preferred), "checking status should not recreate an offline/missing directory");
         sessionA.faux.setResponses([
           scriptedStep(ai, received, { toolCalls: [{ name: "browser_screenshot", arguments: { fullPage: true } }] }),
@@ -1007,7 +1007,7 @@ async function phase4({ pi, tarball, fixture }) {
       );
 
       const reset = await invokeCommand(reopened.api, "ego-settings", "attachments reset", context.sessionKey);
-      check(/默认库/.test(reset.text), `reset failed: ${reset.text}`);
+      check(/default folder/.test(reset.text), `reset failed: ${reset.text}`);
       checkEq(JSON.parse(readFileSync(configFile, "utf8")).preferred, null, "reset did not clear the choice");
       return { preferred, fallback: fallbackRef.id.slice(0, 12) };
     });

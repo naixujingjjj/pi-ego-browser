@@ -1,6 +1,6 @@
 {
   "name": "pi-ego-browser",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Browser tools for Pi, backed by a vendored Ego runtime: open pages, read numbered elements, click, fill, manage tabs, take screenshots into a content-addressed attachment library, hand the browser to the user, and choose the screenshot folder with Windows' own dialog.",
   "license": "MIT",
   "type": "module",

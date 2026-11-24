@@ -103,7 +103,7 @@ export function sessionReferences(entries) {
 export function selectSessionReference(candidates, wanted) {
   const needle = String(wanted ?? "").trim().toLowerCase();
   if (!needle) {
-    return { ok: false, code: "ATTACHMENT_ID_REQUIRED", message: "附件 ID 不能为空。" };
+    return { ok: false, code: "ATTACHMENT_ID_REQUIRED", message: "Enter a screenshot ID." };
   }
   const matches = [];
   for (const ref of Array.isArray(candidates) ? candidates : []) {
@@ -117,7 +117,7 @@ export function selectSessionReference(candidates, wanted) {
     return {
       ok: false,
       code: "ATTACHMENT_NOT_IN_SESSION",
-      message: `本会话里没有附件 ${String(wanted ?? "").slice(0, 80)}。只能使用本会话截图结果里的附件 ID；先 browser_screenshot，或在 /ego-settings 的「本会话截图」里看列表。`,
+      message: `No screenshot with ID ${String(wanted ?? "").slice(0, 80)} in this session. Find its ID under Session Screenshots in /ego-settings.`,
     };
   }
   const ids = [...new Set(matches.map((entry) => entry.id))];

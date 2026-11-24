@@ -327,7 +327,7 @@ test("a path that is a file is refused when set as the preferred directory", asy
       assert.equal(error.code, "ATTACHMENT_PATH_IS_FILE");
       return true;
     });
-    assert.throws(() => library.setPreferred(file), /文件，不是目录/);
+    assert.throws(() => library.setPreferred(file), /is a file\. Choose a folder/);
     assert.equal(library.preferredDir(), null);
   } finally {
     temp.cleanup();
@@ -337,9 +337,9 @@ test("a path that is a file is refused when set as the preferred directory", asy
 test("path normalization and root IDs are stable and refuse relative input", async () => {
   const temp = tempDir("attachments-ids");
   try {
-    assert.throws(() => normalizeRootPath(""), /不能为空/);
-    assert.throws(() => normalizeRootPath("   "), /不能为空/);
-    assert.throws(() => normalizeRootPath("relative/dir"), /绝对路径/);
+    assert.throws(() => normalizeRootPath(""), /Enter a screenshot folder/);
+    assert.throws(() => normalizeRootPath("   "), /Enter a screenshot folder/);
+    assert.throws(() => normalizeRootPath("relative/dir"), /absolute path/);
     assert.equal(normalizeRootPath(temp.dir), normalizeRootPath(`${temp.dir}\\`));
     const driveRoot = normalizeRootPath("F:/");
     assert.match(driveRoot, /^F:\\$/);

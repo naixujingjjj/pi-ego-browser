@@ -155,16 +155,16 @@ test("/ego-settings attachments reports the preferred, default and registered di
   try {
     const ctx = toolContext(stateRoot, "unit-list");
     const listed = await runSettings(api, "attachments", ctx);
-    assert.match(listed.text, /首选目录：/);
-    assert.match(listed.text, /默认目录：/);
-    assert.match(listed.text, /本会话截图：0 张/);
+    assert.match(listed.text, /Preferred folder:/);
+    assert.match(listed.text, /Default folder:/);
+    assert.match(listed.text, /Session Screenshots: 0/);
     assert.equal(listed.text.includes("/ego "), false, "the listing must not point at the removed command");
     assert.equal(listed.text.includes("/ego-settings"), true);
 
     const published = publishShot(stateRoot, "unit-list");
     const withShot = await runSettings(api, "attachments", ctx);
     assert.match(withShot.text, new RegExp(shortId(published.ref.id)));
-    assert.match(withShot.text, /文件：/);
+    assert.match(withShot.text, /File:/);
 
     const help = await runSettings(api, "attachments help", ctx);
     assert.match(help.text, /attachments set/);
@@ -182,12 +182,12 @@ test("/ego-settings attachments set keeps spaces, survives a restart, and resets
   try {
     const ctx = toolContext(stateRoot, "unit-set");
     const quoted = await runSettings(api(first), `attachments set "${preferred}"`, ctx);
-    assert.match(quoted.text, /首选附件目录已设置/);
+    assert.match(quoted.text, /Preferred screenshot folder set/);
     const paths = resolvePaths({ PI_EGO_HOME: stateRoot });
     assert.equal(readJsonSync(paths.attachmentsConfigFile).preferred, preferred);
 
     const relative = await runSettings(api(first), "attachments set relative/dir", ctx);
-    assert.match(relative.text, /绝对路径/);
+    assert.match(relative.text, /absolute path/);
     assert.equal(readJsonSync(paths.attachmentsConfigFile).preferred, preferred, "a failed set keeps the old choice");
   } finally {
     first.restore();
@@ -202,15 +202,15 @@ test("/ego-settings attachments set keeps spaces, survives a restart, and resets
 
     const unquoted = join(stateRoot, "another 目录", "shots");
     const set = await runSettings(api(second), `attachments set ${unquoted}`, ctx);
-    assert.match(set.text, /首选附件目录已设置/);
+    assert.match(set.text, /Preferred screenshot folder set/);
     assert.equal(readJsonSync(resolvePaths({ PI_EGO_HOME: stateRoot }).attachmentsConfigFile).preferred, unquoted);
 
     const reset = await runSettings(api(second), "attachments reset", ctx);
-    assert.match(reset.text, /默认库/);
+    assert.match(reset.text, /default folder/);
     assert.equal(readJsonSync(resolvePaths({ PI_EGO_HOME: stateRoot }).attachmentsConfigFile).preferred, null);
 
     const unknown = await runSettings(api(second), "attachments nope", ctx);
-    assert.match(unknown.text, /不认识的子命令/);
+    assert.match(unknown.text, /Unknown attachments action/);
   } finally {
     second.restore();
   }
@@ -230,8 +230,8 @@ test("/ego-settings info shows exactly what /ego-settings status prints and Esc 
     // The reference text: what `/ego-settings status` prints outside the menu.
     ctx.mode = "rpc";
     const status = await runSettings(api, "status", ctx);
-    assert.match(status.text, /^浏览器：/);
-    assert.match(status.text, /状态目录：/);
+    assert.match(status.text, /^Browser:/);
+    assert.match(status.text, /State folder:/);
     ctx.mode = "tui";
     notices.length = 0; // the status action notifies; the settings menu must not.
 
@@ -248,13 +248,13 @@ test("/ego-settings info shows exactly what /ego-settings status prints and Esc 
       component.handleInput("\r"); // Enter on the item called info
       views.push(component.render(300).join("\n"));
       component.handleInput("\x1b[A");
-      assert.match(component.render(300).join("\n"), /info · 浏览器状态/);
+      assert.match(component.render(300).join("\n"), /Info · Browser Status/);
       component.handleInput("\x1b[27u"); // Extended Escape used by terminals with the Kitty protocol.
       views.push(component.render(300).join("\n"));
-      assert.match(views[2], /截图附件目录/);
+      assert.match(views[2], /Screenshot Folder/);
       component.handleInput("\r");
       component.handleInput("\x1b"); // Legacy Escape also closes the info panel.
-      assert.match(component.render(300).join("\n"), /截图附件目录/);
+      assert.match(component.render(300).join("\n"), /Screenshot Folder/);
       component.handleInput("\x1b[27;1u"); // Escape in the list leaves the settings.
       assert.ok(Object.hasOwn(screen, "action"), "the settings command was closed");
       return screen.action;
@@ -264,28 +264,29 @@ test("/ego-settings info shows exactly what /ego-settings status prints and Esc 
     assert.equal(await command.handler("", ctx), undefined);
 
     // The settings list itself: the item is called info and carries the status line.
-    assert.match(views[0], /Ego 浏览器设置/);
-    assert.match(views[0], /\binfo\b/);
-    assert.match(views[0], /截图附件目录/);
-    assert.match(views[0], /未运行/);
-    assert.equal(views[0].includes("恢复默认目录"), false, "no reset row without a preferred directory");
+    assert.match(views[0], /Ego Browser Settings/);
+    assert.doesNotMatch(views[0], /\p{Script=Han}/u);
+    assert.match(views[0], /\bInfo\b/);
+    assert.match(views[0], /Screenshot Folder/);
+    assert.match(views[0], /Stopped/);
+    assert.equal(views[0].includes("Restore Default Folder"), false, "no reset row without a preferred directory");
 
     // Opening info shows the same lines /ego printed, not a summary of them.
-    assert.match(views[1], /info · 浏览器状态/);
+    assert.match(views[1], /Info · Browser Status/);
     for (const line of status.text.split("\n")) {
       assert.ok(views[1].includes(line), `the info panel repeats the /ego line "${line}"`);
     }
-    assert.match(views[1], /Esc 返回/);
+    assert.match(views[1], /Esc returns/);
 
     // Esc inside the panel goes back to the list instead of closing the settings.
-    assert.match(views[2], /Ego 浏览器设置/);
-    assert.match(views[2], /截图附件目录/);
+    assert.match(views[2], /Ego Browser Settings/);
+    assert.match(views[2], /Screenshot Folder/);
     assert.equal(screens, 0, "only one screen was opened");
     assert.equal(readJsonSync(resolvePaths({ PI_EGO_HOME: stateRoot }).attachmentsConfigFile, null), null, "info changed no setting");
     assert.deepEqual(notices, [], "looking at the status changes nothing and notifies nothing");
 
     ctx.mode = "rpc";
-    assert.match(await command.handler("", ctx), /交互终端/);
+    assert.match(await command.handler("", ctx), /interactive terminal/);
   } finally {
     restore();
   }
@@ -303,11 +304,11 @@ test("/ego-settings info and status are the same action, and the TUI never claim
     // menu lives and which arguments this host can use instead.
     ctx.mode = "rpc";
     const status = await runSettings(api, "status", ctx);
-    assert.match(status.text, /^浏览器：/);
-    assert.match(notices[0].message, /交互终端/);
+    assert.match(status.text, /^Browser:/);
+    assert.match(notices[0].message, /interactive terminal/);
     const info = await runSettings(api, "info", ctx);
     assert.equal(info.text, status.text, "the menu row's name is the same action as status");
-    assert.match(notices[1].message, /交互终端/);
+    assert.match(notices[1].message, /interactive terminal/);
 
     // Inside the TUI the menu is one Enter away, so that hint would be a lie.
     ctx.mode = "tui";
@@ -315,11 +316,11 @@ test("/ego-settings info and status are the same action, and the TUI never claim
     const tuiStatus = await runSettings(api, "status", ctx);
     assert.equal(tuiStatus.text, status.text);
     assert.equal(notices.length, 1, "an explicit action notifies once with the status");
-    assert.equal(/交互终端/.test(notices[0].message), false, "the TUI has a terminal");
-    assert.match(notices[0].message, /^浏览器：/);
+    assert.equal(/interactive terminal/.test(notices[0].message), false, "the TUI has a terminal");
+    assert.match(notices[0].message, /^Browser:/);
     const tuiInfo = await runSettings(api, "info", ctx);
     assert.equal(tuiInfo.text, status.text);
-    assert.equal(/交互终端/.test(notices[1].message), false, "info in the TUI has a terminal too");
+    assert.equal(/interactive terminal/.test(notices[1].message), false, "info in the TUI has a terminal too");
   } finally {
     restore();
   }
@@ -373,9 +374,9 @@ test("/ego-settings directory uses Windows' own folder picker; cancel keeps the 
       const view = component.render(240).join("\n");
       const stored = readJsonSync(config, null)?.preferred ?? null;
       assert.equal(stored, screen.value, "the stored choice before this screen");
-      assert.match(view, /Ego 浏览器设置/);
-      assert.match(view, /\binfo\b/);
-      if (stored) assert.match(view, /恢复默认目录/);
+      assert.match(view, /Ego Browser Settings/);
+      assert.match(view, /\bInfo\b/);
+      if (stored) assert.match(view, /Restore Default Folder/);
       for (const key of screen.keys) component.handleInput(key);
       return screen.action;
     };
@@ -399,27 +400,27 @@ test("/ego-settings directory uses Windows' own folder picker; cancel keeps the 
     assert.equal(shellCalls[0].args.join(" ").includes(preferred), false, "the path is never on the command line");
     assert.ok(shellCalls[0].options.timeout >= 60000, "an open dialog is closed on a timeout");
     assert.equal(notices[0].level, "info");
-    assert.match(notices[0].message, /首选附件目录已设置/);
+    assert.match(notices[0].message, /Preferred screenshot folder set/);
 
     // 2. Cancel is not a failure: the stored choice stays and the next dialog
     //    starts where the user already is.
     assert.equal(initials[1], preferred);
     assert.equal(notices[1].level, "info");
-    assert.match(notices[1].message, /已取消/);
+    assert.match(notices[1].message, /Canceled/);
 
     // 3. Reset keeps working and leaves no preferred directory behind.
     assert.equal(readJsonSync(config).preferred, null);
-    assert.match(notices[2].message, /默认库/);
+    assert.match(notices[2].message, /default folder/);
 
     // 4. A non-zero exit is reported and falls back to the typed path; cancelling
     //    that prompt changes nothing.
     assert.equal(initials[2], "", "no preferred directory means no stale starting directory");
     assert.equal(notices[3].level, "error");
-    assert.match(notices[3].message, /退出码 5/);
+    assert.match(notices[3].message, /exit code 5/);
     assert.equal(notices[4].level, "info");
-    assert.match(notices[4].message, /已取消/);
+    assert.match(notices[4].message, /Canceled/);
     assert.equal(prompts.length, 1, "the typed-path fallback is offered once");
-    assert.match(prompts[0].title, /绝对路径/);
+    assert.match(prompts[0].title, /absolute path/);
     assert.equal(readJsonSync(config).preferred, null);
     assert.equal(notices.length, 5);
   } finally {
@@ -455,7 +456,7 @@ test("/ego-settings falls back to the typed path when the native dialog is unava
       const component = factory({ requestRender() {} }, theme, null, (value) => {
         screen.action = value;
       });
-      assert.match(component.render(240).join("\n"), /截图附件目录/);
+      assert.match(component.render(240).join("\n"), /Screenshot Folder/);
       for (const key of screen.keys) component.handleInput(key);
       return screen.action;
     };
@@ -463,10 +464,10 @@ test("/ego-settings falls back to the typed path when the native dialog is unava
     await api.commands.get("ego-settings").handler("", ctx);
     assert.deepEqual(screens, []);
     assert.equal(notices[0].level, "info");
-    assert.match(notices[0].message, /手动输入目录/);
+    assert.match(notices[0].message, /Enter the folder path/);
     assert.equal(prompts.length, 1);
     assert.equal(notices[1].level, "info");
-    assert.match(notices[1].message, /首选附件目录已设置/);
+    assert.match(notices[1].message, /Preferred screenshot folder set/);
     assert.equal(readJsonSync(config).preferred, typed, "the typed path with spaces is stored as typed");
   } finally {
     restore();
@@ -480,17 +481,17 @@ test("/ego-settings attachments open hands the verified file to the OS viewer", 
     const ctx = toolContext(stateRoot, "unit-open");
     const published = publishShot(stateRoot, "unit-open");
     const opened = await runSettings(api, `attachments open ${published.ref.id}`, ctx);
-    assert.match(opened.text, /已用系统默认程序打开/);
+    assert.match(opened.text, /Opened in the default image viewer/);
     assert.equal(api.executed.length, 1);
     assert.equal(api.executed[0].command, "explorer.exe");
     assert.equal(api.executed[0].args[0], published.path);
 
     const unknown = await runSettings(api, `attachments open ${"f".repeat(64)}`, ctx);
-    assert.match(unknown.text, /本会话里没有附件/);
+    assert.match(unknown.text, /No screenshot with ID/);
     assert.equal(api.executed.length, 1, "an unknown ID must not open anything");
 
     const outside = await runSettings(api, "attachments open ../../Windows/win.ini", ctx);
-    assert.match(outside.text, /本会话里没有附件/);
+    assert.match(outside.text, /No screenshot with ID/);
     assert.equal(api.executed.length, 1);
   } finally {
     restore();
@@ -656,7 +657,7 @@ test("browser_save_screenshot returns the saved original and copies only to a na
   }
 });
 
-test("/ego-settings 本会话截图 lists the session's pictures and opens one with the OS viewer", async () => {
+test("/ego-settings Session Screenshots lists the session's pictures and opens one with the OS viewer", async () => {
   const stateRoot = freshDir(join(ROOT, ".tmp", "unit-extension-state", "shots-panel"));
   const { api, restore } = await loadExtension({ stateRoot });
   try {
@@ -671,8 +672,8 @@ test("/ego-settings 本会话截图 lists the session's pictures and opens one w
     // One screen per menu iteration: pick the picture, then open by prefix, then Esc.
     // `after` marks the key presses after which the opened panel is captured.
     const screens = [
-      { keys: ["\x1b[B", "\x1b[B", "\r", "\x1b[B", "\r"], after: [0, 3, 4] }, // →本会话截图, open, →the picture, open it
-      { keys: ["\x1b[B", "\x1b[B", "\r", "\r"], after: [3] }, // →本会话截图, open, 按 ID 打开…
+      { keys: ["\x1b[B", "\x1b[B", "\r", "\x1b[B", "\r"], after: [0, 3, 4] }, // →Session Screenshots, open, →the picture, open it
+      { keys: ["\x1b[B", "\x1b[B", "\r", "\r"], after: [3] }, // →Session Screenshots, open, Open by ID…
       { keys: ["\x1b"], after: [] }, // leave the menu
     ];
     const views = [];
@@ -696,11 +697,11 @@ test("/ego-settings 本会话截图 lists the session's pictures and opens one w
     assert.deepEqual(screens, [], "every planned screen was used");
 
     // The main list has a screenshot row; every panel names the ID and offers the ID row.
-    assert.match(views[0], /本会话截图/);
-    assert.match(views[0], /1 张/);
+    assert.match(views[0], /Session Screenshots/);
+    assert.match(views[0], /Session Screenshots\s+1\b/);
     for (const panel of [views[1], views[2], views[3]]) {
       assert.match(panel, new RegExp(shortId(published.ref.id)));
-      assert.match(panel, /按 ID 打开/);
+      assert.match(panel, /Open by ID/);
     }
     // Selecting the picture shows its absolute file path before Enter opens it.
     assert.ok(views[2].includes(published.path), `the panel should name the file:\n${views[2]}`);
@@ -715,7 +716,7 @@ test("/ego-settings 本会话截图 lists the session's pictures and opens one w
   }
 });
 
-test("/ego-settings offers 恢复浏览器控制 only while the user holds the browser", async () => {
+test("/ego-settings offers Resume Browser Control only while the user holds the browser", async () => {
   const stateRoot = freshDir(join(ROOT, ".tmp", "unit-extension-state", "resume-row"));
   const { api, restore } = await loadExtension({ stateRoot });
   try {
@@ -748,16 +749,16 @@ test("/ego-settings offers 恢复浏览器控制 only while the user holds the b
 
     // The row is there while handed off, and picking it attempted the resume
     // (no browser in this unit test, so it fails cleanly instead of throwing).
-    assert.match(views[0], /恢复浏览器控制/);
-    assert.match(String(notices[0]?.message), /恢复失败/);
+    assert.match(views[0], /Resume Browser Control/);
+    assert.match(String(notices[0]?.message), /Could not resume browser control/);
     assert.equal(notices[0].level, "error");
     assert.equal(store.get(sessionKey).handedOff, true, "a failed resume keeps the hand-off state");
 
     // Once the user is done, the row is not offered at all.
     store.setHandoff(sessionKey, false);
     await api.commands.get("ego-settings").handler("", ctx);
-    assert.match(views[1], /本会话截图/);
-    assert.equal(views[1].includes("恢复浏览器控制"), false);
+    assert.match(views[1], /Session Screenshots/);
+    assert.equal(views[1].includes("Resume Browser Control"), false);
   } finally {
     restore();
   }

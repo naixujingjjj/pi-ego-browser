@@ -79,7 +79,7 @@ test("the chosen directory comes back unchanged and the starting directory never
   assert.equal(calls[0].options.timeout > 0, true, "an overdue dialog is closed, not awaited forever");
 
   assert.equal(dialog.input.initial, initial, "the starting directory travels in the input file");
-  assert.match(dialog.input.description, /截图附件目录/);
+  assert.match(dialog.input.description, /Choose a screenshot folder/);
   assert.match(dialog.script, /FolderBrowserDialog/);
   assert.equal(existsSync(dialog.dir), false, "the temporary dialog directory is removed");
 });
@@ -104,7 +104,7 @@ test("cancel is reported as a cancel, keeps the choice, and still cleans up", as
   assert.equal(picked.ok, false);
   assert.equal(picked.cancelled, true);
   assert.equal(picked.available, true);
-  assert.match(picked.message, /保持不变/);
+  assert.match(picked.message, /folder is unchanged/);
   assert.equal(existsSync(dir), false);
 });
 
@@ -119,7 +119,7 @@ test("a non-zero exit without a result is a failure that names the exit code and
   assert.equal(picked.cancelled, false);
   assert.equal(picked.available, true);
   assert.equal(picked.code, "PICKER_EXIT_CODE");
-  assert.match(picked.message, /退出码 5/);
+  assert.match(picked.message, /exit code 5/);
   assert.match(picked.message, /Access is denied\./);
   assert.equal(existsSync(dir), false, "a failed dialog leaves nothing behind");
 });
@@ -129,8 +129,8 @@ test("a dialog closed by the test timeout is reported with its shell", async () 
   const picked = await pickFolder({ exec, timeoutMs: 25, platform: "win32" });
   assert.equal(picked.ok, false);
   assert.equal(picked.code, "PICKER_TIMEOUT");
-  assert.match(picked.message, /超时/);
-  assert.match(picked.message, /保持不变/);
+  assert.match(picked.message, /timed out/);
+  assert.match(picked.message, /folder is unchanged/);
 });
 
 test("a non-zero exit cannot return a directory even when it wrote a selection", async () => {
@@ -171,7 +171,7 @@ test("a WinForms failure inside the script is unavailable, not a hard error", as
   const picked = await pickFolder({ exec, platform: "win32" });
   assert.equal(picked.ok, false);
   assert.equal(picked.available, false);
-  assert.match(picked.message, /不可用/);
+  assert.match(picked.message, /unavailable/);
   assert.match(picked.message, /System.Windows.Forms/);
 });
 
@@ -182,7 +182,7 @@ test("a dialog error inside the script is a failure with the script's own messag
   assert.equal(picked.available, true);
   assert.equal(picked.code, "PICKER_DIALOG_FAILED");
   assert.match(picked.message, /single thread apartment/);
-  assert.match(picked.message, /保持不变/);
+  assert.match(picked.message, /folder is unchanged/);
 });
 
 test("an empty, relative or quoted result is refused instead of being stored", async () => {
@@ -207,7 +207,7 @@ test("no result file at all is a failure that says so", async () => {
   const picked = await pickFolder({ exec, platform: "win32" });
   assert.equal(picked.ok, false);
   assert.equal(picked.code, "PICKER_NO_RESULT");
-  assert.match(picked.message, /没有返回结果/);
+  assert.match(picked.message, /returned no result/);
 });
 
 test("off Windows, or without a way to start a process, the picker is simply unavailable", async () => {
@@ -220,7 +220,7 @@ test("off Windows, or without a way to start a process, the picker is simply una
 
   const noExec = await pickFolder({ exec: null, platform: "win32" });
   assert.equal(noExec.available, false);
-  assert.match(noExec.message, /手动输入目录/);
+  assert.match(noExec.message, /Enter the folder path/);
 });
 
 test("no usable PowerShell at all is unavailable, so the caller can fall back", async () => {
@@ -234,7 +234,7 @@ test("no usable PowerShell at all is unavailable, so the caller can fall back", 
   assert.equal(picked.ok, false);
   assert.equal(picked.available, false);
   assert.equal(picked.code, "PICKER_UNAVAILABLE");
-  assert.match(picked.message, /手动输入目录/);
+  assert.match(picked.message, /Enter the folder path/);
   assert.equal(calls.length, 2, "both shells were tried");
 });
 

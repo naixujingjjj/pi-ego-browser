@@ -119,7 +119,7 @@ export function hardStopOf(result) {
     ok: false,
     code: "HANDED_TO_USER",
     message:
-      "用户正在控制这个浏览器任务空间。等用户处理完并在 Pi 里从 /ego-settings 的「恢复浏览器控制」恢复后再继续；现在不要重试。\n（Ego 原文：" +
+      "用户正在控制这个浏览器任务空间。等用户处理完并在 Pi 里从 /ego-settings 的「Resume Browser Control」恢复后再继续；现在不要重试。\n（Ego 原文：" +
       text.trim().split("\n")[0] +
       "）",
     details: { handedOff: true, hardStop: true },
@@ -209,7 +209,7 @@ export class BrowserService {
       ok: false,
       code: "HANDED_TO_USER",
       message:
-        "用户正在控制这个浏览器任务空间。等用户处理完并在 Pi 里从 /ego-settings 的「恢复浏览器控制」恢复后再继续；现在不要重试。",
+        "用户正在控制这个浏览器任务空间。等用户处理完并在 Pi 里从 /ego-settings 的「Resume Browser Control」恢复后再继续；现在不要重试。",
       details: { handedOff: true, url: record.url, pageLabel: record.pageLabel },
     };
   }
@@ -486,7 +486,7 @@ export class BrowserService {
           ? `首选目录 ${fallback.path} 这次不可用（${fallback.reason}），这张写进了 ${ingested.rootPath}；首选设置保留，目录恢复后下次截图会继续用它。`
           : "",
         "用户说「保存这张」时这就是原件：回答上面的路径即可，不要再复制一份。只有用户明确要求存到别的目录并给出完整 .png 路径时，才用 browser_save_screenshot { path }。",
-        "要回看本会话旧截图：browser_show_screenshot（模型）；用户可在 /ego-settings 的「本会话截图」里打开。",
+        "要回看本会话旧截图：browser_show_screenshot（模型）；用户可在 /ego-settings 的「Session Screenshots」里打开。",
       ].filter(Boolean);
       return {
         ok: true,
@@ -786,7 +786,7 @@ export class BrowserService {
   /**
    * Directory, registry and per-session attachment status. This is the text
    * `/ego-settings attachments` prints, and the same rows fill the TUI's
-   * `本会话截图` page (each row carries its file and whether it is usable).
+   * `Session Screenshots` page (each row carries its file and whether it is usable).
    */
   attachments({ sessionKey }) {
     const key = this.key(sessionKey);
@@ -805,37 +805,37 @@ export class BrowserService {
         ? [record.latestAttachment]
         : [];
 
-    const lines = ["附件库"];
-    lines.push(`首选目录：${preferred || "（未设置，用默认目录）"}`);
-    lines.push(`默认目录：${defaultDir}`);
-    lines.push(`本机暂存区：${library.stagingDir()}（截图先写这里，发布到附件库时删掉）`);
-    if (config.invalid) lines.push(`注意：配置里记录的目录无效（${config.invalid}：${config.error || "不是绝对路径"}），现在按未设置处理。`);
+    const lines = ["Screenshot Library"];
+    lines.push(`Preferred folder: ${preferred || "(using the default folder)"}`);
+    lines.push(`Default folder: ${defaultDir}`);
+    lines.push(`Temporary capture folder: ${library.stagingDir()}`);
+    if (config.invalid) lines.push(`Invalid preferred folder (${config.invalid}: ${config.error || "expected an absolute path"}). Using the default folder.`);
     for (const probe of probes) {
-      const counts = probe.objects ? `，${probe.objects.objects} 张 / ${formatBytes(probe.objects.bytes)}` : "";
-      lines.push(`${probe.role}目录${probe.ok ? "可写" : "不可写"}：${probe.path}${probe.ok ? counts : `（${probe.reason}）`}`);
+      const counts = probe.objects ? `, ${probe.objects.objects} screenshots / ${formatBytes(probe.objects.bytes)}` : "";
+      lines.push(`${probe.role === "首选" ? "Preferred" : "Default"} folder ${probe.ok ? "is writable" : "is not writable"}: ${probe.path}${probe.ok ? counts : ` (${probe.reason})`}`);
     }
-    lines.push(`登记的存储根：${roots.length ? "" : "（还没有）"}`);
-    for (const root of roots) lines.push(`  ${root.id} → ${root.path}（${root.kind}）`);
+    lines.push(`Registered library folders:${roots.length ? "" : " (none)"}`);
+    for (const root of roots) lines.push(`  ${root.id} → ${root.path} (${root.kind})`);
     if (record.latestAttachment) {
       const located = library.locate(record.latestAttachment);
       lines.push(
-        `最近一张实际写入：${located.ok ? located.rootPath : `（${located.message}）`}${record.latestAttachment.fallback ? `；首选目录上一次失败：${record.latestAttachment.fallback.reason}` : ""}`,
+        `Last screenshot saved to: ${located.ok ? located.rootPath : `(${located.message})`}${record.latestAttachment.fallback ? ` (preferred folder unavailable: ${record.latestAttachment.fallback.reason})` : ""}`,
       );
     }
-    lines.push(`本会话截图：${refs.length} 张`);
-    if (!refs.length) lines.push("  （还没有截图）");
+    lines.push(`Session Screenshots: ${refs.length}`);
+    if (!refs.length) lines.push("  (no screenshots)");
     if (refs.length >= ATTACHMENT_LIST_LIMIT) {
-      lines.push(`  （列表只留最近 ${ATTACHMENT_LIST_LIMIT} 张；更早的截图仍可用 ID 回看，见下面的命令）`);
+      lines.push(`  Showing the latest ${ATTACHMENT_LIST_LIMIT}. Open older screenshots by ID.`);
     }
     refs.forEach((ref, position) => {
       const located = library.locate(ref);
-      const when = ref.at ? new Date(ref.at).toLocaleString("zh-CN") : "";
+      const when = ref.at ? new Date(ref.at).toLocaleString("en-US") : "";
       lines.push(`  ${position + 1}. ${shortId(ref.id)}… ${formatBytes(ref.bytes)} ${when} ${ref.pageLabel || ""} ${ref.title || ""}`.trimEnd());
-      lines.push(located.ok ? `     文件：${located.path}` : `     不可用：${located.message}`);
+      lines.push(located.ok ? `     File: ${located.path}` : `     Unavailable: ${located.message}`);
     });
-    lines.push("回看旧截图：browser_show_screenshot { id }（模型请求里带上图），或在 /ego-settings 的「本会话截图」里按 ID 打开（打开文件）");
-    lines.push("没有列传的旧截图也能用 ID 回看：本会话的工具结果里存着每张图的紧凑引用");
-    lines.push("设置：/ego-settings 的「截图附件目录」用 Windows 选择器；非交互环境用 /ego-settings attachments set <绝对路径>（可带引号和空格）或 /ego-settings attachments reset（回到默认目录）");
+    lines.push("Open older screenshots by ID under Session Screenshots in /ego-settings. Pi can look them up with browser_show_screenshot.");
+    lines.push("Find IDs for older screenshots in this session’s tool results.");
+    lines.push("Use Screenshot Folder in /ego-settings to select a folder. Without a menu, use /ego-settings attachments set <absolute path> or /ego-settings attachments reset.");
     const shots = this.sessionScreenshots({ sessionKey });
     return {
       ok: true,
@@ -860,14 +860,14 @@ export class BrowserService {
       const path = library.setPreferred(dir);
       return {
         ok: true,
-        text: `首选附件目录已设置为：${path}\n新的截图会写到 ${path}；已经存在的附件仍按保存时登记的存储根定位，不搬迁文件。\n默认目录保持为：${library.defaultDir()}`,
+        text: `Preferred screenshot folder set to: ${path}\nNew screenshots use this folder. Existing screenshots keep their original locations.\nDefault folder: ${library.defaultDir()}`,
         details: { preferred: path, rootId: library.registerRoot(path, "preferred").id, defaultDir: library.defaultDir() },
       };
     } catch (error) {
       return {
         ok: false,
         code: error?.code || "ATTACHMENT_UNWRITABLE",
-        message: error?.message || `无法把首选目录设置为 ${dir}。`,
+        message: error?.message || `Could not set the preferred screenshot folder to ${dir}.`,
         details: { ...(error?.details || {}), current: library.preferredDir() },
       };
     }
@@ -879,7 +879,7 @@ export class BrowserService {
     const dir = library.resetPreferred();
     return {
       ok: true,
-      text: `首选附件目录已清除，新截图写默认库：${dir}\n已有附件仍按保存时登记的存储根定位。`,
+      text: `New screenshots will use the default folder: ${dir}\nExisting screenshots keep their original locations.`,
       details: { preferred: null, defaultDir: dir },
     };
   }
@@ -919,7 +919,7 @@ export class BrowserService {
     return {
       ok: false,
       code: lastFailure.located.code || "ATTACHMENT_UNAVAILABLE",
-      message: `附件 ${shortId(selected.id)}… 现在打不开：${lastFailure.located.message}`,
+      message: `Cannot open screenshot ${shortId(selected.id)}…: ${lastFailure.located.message}`,
       details: { attachment: attachmentDetails(lastFailure.ref), path: lastFailure.located.path || null },
     };
   }
@@ -937,7 +937,7 @@ export class BrowserService {
         `页面：${ref.title || "(无标题)"} · ${ref.url || "?"}`,
         `存储根：${ref.rootId}（${located.rootPath}）`,
         "视觉模型会在本次用户轮的下一批模型请求里看到这张图：挂在这次工具结果上，不写进会话。",
-        "纯文字模型只拿到上面的路径和 ID；你自己的窗口可以在 /ego-settings 的「本会话截图」里按 ID 打开它。",
+        "纯文字模型只拿到上面的路径和 ID；你自己的窗口可以在 /ego-settings 的「Session Screenshots」里按 ID 打开它。",
       ].join("\n"),
       details: { attachment: attachmentDetails(ref), path: located.path, review: true },
     };
@@ -960,7 +960,7 @@ export class BrowserService {
     if (record.handedOff) {
       return {
         ok: true,
-        text: `浏览器已经交给用户，正在等待用户在 /ego-settings 里选「恢复浏览器控制」。\n当前页面：${record.title || ""} ${record.url || ""}`,
+        text: `浏览器已经交给用户，正在等待用户在 /ego-settings 里选「Resume Browser Control」。\n当前页面：${record.title || ""} ${record.url || ""}`,
         details: { handedOff: true, alreadyHandedOff: true },
       };
     }
@@ -985,7 +985,7 @@ export class BrowserService {
         `当前页面：${result.title || "(无标题)"} · ${result.url || "?"}（标签页 ${result.pageLabel || "?"}）`,
         instruction ? `请用户处理：${instruction}` : "请用户在浏览器窗口里完成需要人工的步骤。",
         visible ? "" : "注意：浏览器是无头模式，用户看不到窗口；设置 PI_EGO_HEADLESS=0 后重启 Pi 才能交给用户操作。",
-        "用户完成后在 Pi 里打开 /ego-settings，选「恢复浏览器控制」，再继续任务；在此之前不要再调用浏览器工具。",
+        "用户完成后在 Pi 里打开 /ego-settings，选「Resume Browser Control」，再继续任务；在此之前不要再调用浏览器工具。",
       ]
         .filter(Boolean)
         .join("\n"),
@@ -1016,7 +1016,7 @@ export class BrowserService {
     this.store.setHandoff(key, false);
     return {
       ok: true,
-      text: `已恢复浏览器控制权（从 ${result.resumedFrom || "用户"} 接手）。\n当前页面：${result.title || "(无标题)"} · ${result.url}\n编号 #1..#${numbered.items.length}（第 ${seq} 次读取），可以直接继续操作。\n${truncate(numbered.text, 20000).text}`,
+      text: `Resumed browser control (previous owner: ${result.resumedFrom || "user"}).\nCurrent page: ${result.title || "(untitled)"} · ${result.url}\nElement numbers #1..#${numbered.items.length} are ready (snapshot ${seq}).\n${truncate(numbered.text, 20000).text}`,
       details: { ...this.#spaceDetails(result), resumed: true, seq, elements: numbered.items.length },
     };
   }
@@ -1033,42 +1033,42 @@ export class BrowserService {
     const doctorParsed = doctorResult?.raw ? parseDoctor(doctorResult.raw) : doctorResult && doctorResult.browser ? doctorResult : null;
     const lines = [];
     const browserStatus = guard.foreign
-      ? `端口 ${this.paths.port} 已被其他浏览器占用`
+      ? `Port ${this.paths.port} is in use by another browser`
       : endpoint
-        ? `正在运行（端口 ${this.paths.port}）`
-        : "未运行（下次调用浏览器工具时启动）";
-    lines.push(`浏览器：${browserStatus}`);
+        ? `Running on port ${this.paths.port}`
+        : "Stopped. Starts when a browser tool is used.";
+    lines.push(`Browser: ${browserStatus}`);
     if (browserState) {
-      lines.push(`浏览器来源：${browserState.source || "?"}${browserState.version ? ` ${browserState.version}` : ""}${browserState.path ? ` → ${browserState.path}` : ""}`);
-      if (browserState.ok === false) lines.push(`上次准备失败：${browserState.stage} — ${browserState.message}`);
+      lines.push(`Browser source: ${browserState.source || "?"}${browserState.version ? ` ${browserState.version}` : ""}${browserState.path ? ` → ${browserState.path}` : ""}`);
+      if (browserState.ok === false) lines.push(`Last browser setup error: ${browserState.stage} — ${browserState.message}`);
     } else {
-      lines.push("浏览器来源：尚未准备（首次使用时会发现本机浏览器或下载 Chrome for Testing）");
+      lines.push("Browser source: determined on first use");
     }
-    lines.push(`状态目录：${this.paths.stateRoot}`);
+    lines.push(`State folder: ${this.paths.stateRoot}`);
     {
       const library = new AttachmentLibrary(this.paths);
       const config = library.configState();
       lines.push(
-        `附件库：${config.preferred || library.defaultDir()}${config.preferred ? `（首选；默认 ${library.defaultDir()}）` : "（默认目录）"}；/ego-settings attachments 看详情`,
+        `Screenshot library: ${config.preferred || library.defaultDir()}${config.preferred ? ` (preferred, default: ${library.defaultDir()})` : " (default)"}`,
       );
     }
     if (doctorParsed) {
-      lines.push(`doctor：浏览器 ${doctorParsed.browser || "?"}；端点 ${doctorParsed.endpoint || "?"}；任务空间 ${doctorParsed.spaces.length} 个`);
+      lines.push(`Diagnostics: browser ${doctorParsed.browser || "?"}, endpoint ${doctorParsed.endpoint || "?"}, task spaces ${doctorParsed.spaces.length}`);
     }
     lines.push(
-      `本会话：${record.spaceId == null ? "还没有浏览器任务空间" : `任务空间 ${record.spaceId}（${record.spaceName}）`}${
-        space ? `，ownership=${space.ownership}，标签 ${space.targetIds?.length ?? 0} 个` : ""
+      `Session: ${record.spaceId == null ? "No browser task space yet" : `Task space ${record.spaceId} (${record.spaceName})`}${
+        space ? `, owner: ${space.ownership}, tabs: ${space.targetIds?.length ?? 0}` : ""
       }`,
     );
-    if (record.url) lines.push(`当前页面：${record.title || ""} ${record.url}`);
-    if (record.pageLabel) lines.push(`当前标签页：${record.pageLabel}`);
+    if (record.url) lines.push(`Current page: ${record.title || ""} ${record.url}`);
+    if (record.pageLabel) lines.push(`Current tab: ${record.pageLabel}`);
     lines.push(
       record.handedOff
-        ? "等待用户：控制权在用户手里，在 /ego-settings 里选「恢复浏览器控制」。"
-        : "控制权：Pi 持有（可以直接操作浏览器）。",
+        ? "Control: your turn. Select Resume Browser Control in /ego-settings when ready."
+        : "Control: Pi",
     );
-    if (record.snapshot?.items?.length) lines.push(`编号：#1..#${record.snapshot.items.length} 仍有效（第 ${record.snapshot.seq} 次读取）。`);
-    else if (record.invalidReason) lines.push(`编号：已失效（${record.invalidReason}），下次操作前先 browser_read。`);
+    if (record.snapshot?.items?.length) lines.push(`Element numbers: #1..#${record.snapshot.items.length} (snapshot ${record.snapshot.seq}).`);
+    else if (record.invalidReason) lines.push(`Element numbers are stale. Run browser_read to refresh them.`);
     return {
       ok: true,
       text: lines.join("\n"),

@@ -88,8 +88,8 @@ if ([...api.commands.keys()].length !== 1) problems.push(`unexpected extra comma
 const settingsCommand = api.commands.get("ego-settings");
 if (settingsCommand) {
   const hint = await settingsCommand.handler("", { mode: "rpc", ui: { notify() {} }, sessionManager: { getSessionId: () => "load-check" } });
-  if (!/交互终端/.test(String(hint ?? ""))) problems.push(`/ego-settings outside the TUI: ${String(hint ?? "")}`);
-  if (!/浏览器：/.test(String(hint ?? ""))) problems.push(`/ego-settings outside the TUI printed no status: ${String(hint ?? "")}`);
+  if (!/interactive terminal/.test(String(hint ?? ""))) problems.push(`/ego-settings outside the TUI: ${String(hint ?? "")}`);
+  if (!/Browser:/.test(String(hint ?? ""))) problems.push(`/ego-settings outside the TUI printed no status: ${String(hint ?? "")}`);
   if (typeof settingsCommand.description !== "string" || settingsCommand.description.length < 10) {
     problems.push("/ego-settings has no description");
   }

@@ -404,10 +404,10 @@ test("a broken preferred directory falls back, and the recovered one is used aga
     assert.ok(second.details.fallback?.reason);
     assert.match(second.text, /首选目录/);
     const summary = service.attachments({ sessionKey });
-    assert.match(summary.text, /首选目录不可写/);
-    assert.match(summary.text, /默认目录可写/);
-    assert.match(summary.text, /最近一张实际写入：/);
-    assert.match(summary.text, /文件：/);
+    assert.match(summary.text, /Preferred folder is not writable/);
+    assert.match(summary.text, /Default folder is writable/);
+    assert.match(summary.text, /Last screenshot saved to:/);
+    assert.match(summary.text, /File:/);
     assert.equal(summary.details.preferred?.endsWith(join("shots 目录", "ego pics")), true, "the choice is kept");
 
     // Both pictures still resolve: the old one through its own root.
@@ -516,7 +516,7 @@ test("handoff pauses the session until resume", async () => {
     const handoff = await service.handoff({ sessionKey: "s6", instruction: "请把邮箱填成 a@b.c" });
     assert.equal(handoff.ok, true);
     assert.match(handoff.text, /\/ego-settings/);
-    assert.match(handoff.text, /恢复浏览器控制/);
+    assert.match(handoff.text, /Resume Browser Control/);
     assert.match(handoff.text, /请把邮箱填成 a@b\.c/);
     assert.equal(calls, 1);
 
@@ -526,11 +526,11 @@ test("handoff pauses the session until resume", async () => {
     assert.equal(calls, 1, "no Ego run happens while the user has control");
 
     const status = await service.status({ sessionKey: "s6", doctor: { browser: "edge", endpoint: "running", spaces: [] } });
-    assert.match(status.text, /等待用户/);
+    assert.match(status.text, /Control: your turn/);
 
     const resumed = await service.resume({ sessionKey: "s6" });
     assert.equal(resumed.ok, true);
-    assert.match(resumed.text, /已恢复浏览器控制权/);
+    assert.match(resumed.text, /Resumed browser control/);
     assert.match(resumed.text, /#1\.\.#1/);
     const after = await service.open({ sessionKey: "s6", url: "http://b/" });
     assert.equal(after.ok, true, "the session works again after resume");
@@ -575,10 +575,10 @@ test("status summarises browser, state root and session", async () => {
     );
     const outcome = await service.status({ sessionKey: "never-used", doctor: { browser: "edge", endpoint: "not running", spaces: [{ id: 1, name: "space", ownership: "agent", tabs: 2 }] } });
     assert.equal(outcome.ok, true);
-    assert.match(outcome.text, /浏览器/);
+    assert.match(outcome.text, /Browser:/);
     assert.match(outcome.text, /management|managed/);
-    assert.match(outcome.text, /还没有浏览器任务空间/);
-    assert.match(outcome.text, /控制权：Pi 持有/);
+    assert.match(outcome.text, /No browser task space yet/);
+    assert.match(outcome.text, /Control: Pi/);
     assert.equal(outcome.details.endpointRunning, false);
   } finally {
     temp.cleanup();
@@ -753,8 +753,8 @@ test("the status list reports an offline preferred directory without recreating 
     rmSync(preferred, { recursive: true, force: true });
 
     const summary = service.attachments({ sessionKey: "offline" });
-    assert.match(summary.text, /首选目录不可写/);
-    assert.match(summary.text, /默认目录可写/);
+    assert.match(summary.text, /Preferred folder is not writable/);
+    assert.match(summary.text, /Default folder is writable/);
     assert.equal(existsSync(preferred), false, "status must not recreate the configured directory");
     assert.equal(summary.details.preferred, preferred, "the choice is kept");
   } finally {

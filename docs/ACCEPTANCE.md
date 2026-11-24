@@ -26,7 +26,7 @@ browser profiles, and npm package directory.
 ```powershell
 cd F:\dsh\pi-ego-browser
 npm install --ignore-scripts --cache .npm-cache     # only typebox, a devDependency
-npm run pack:build                                   # -> dist\pi-ego-browser-0.1.7.tgz
+npm run pack:build                                   # -> dist\pi-ego-browser-0.1.8.tgz
 npm run pack:check                                   # reads the tarball, no unpacking
 npm run pack:load                                    # packaged entry loads with Pi's host packages
 npm run smoke:pi                                     # pi install + pi --mode rpc in a throwaway config
@@ -110,7 +110,7 @@ Each step asserts on its own, so one failure does not hide the rest:
 The install line the suite runs is the one verified by hand on Pi 1.6.0:
 
 ```powershell
-pi install "npm:pi-ego-browser@file:F:/dsh/pi-ego-browser/dist/pi-ego-browser-0.1.7.tgz"
+pi install "npm:pi-ego-browser@file:F:/dsh/pi-ego-browser/dist/pi-ego-browser-0.1.8.tgz"
 ```
 
 The `npm:<name>@file:<path>` form matters: a bare `file:` path is recorded but
@@ -138,25 +138,25 @@ and the screenshot panel and the resume row need a real terminal. Everything
 around them is covered by the suite; these eight checks take a minute.
 
 1. Start `pi` with an isolated config and run `/reload` if the package is new.
-2. `/ego-settings` shows `Ego 浏览器设置` with the rows `info` and `截图附件目录`;
-   `恢复默认目录` only appears while a preferred directory is set, `恢复浏览器控制`
+2. `/ego-settings` shows `Ego Browser Settings` with the rows `info` and `Screenshot Folder`;
+   `Restore Default Folder` only appears while a preferred directory is set, `Resume Browser Control`
    only while the user holds the browser. No `/ego` command exists in the slash menu.
-3. Enter on `info`: every line matches what `/ego-settings status` prints
-   (`浏览器：`, `状态目录：`, `控制权：`). Esc returns to the list, not out of the settings.
-4. Enter on `截图附件目录`: the Windows folder dialog opens **in front** of the
+3. Enter on `Info`: every line matches what `/ego-settings status` prints
+   (`Browser:`, `State folder:`, `控制权：`). Esc returns to the list, not out of the settings.
+4. Enter on `Screenshot Folder`: the Windows folder dialog opens **in front** of the
    terminal, starts in the directory in use, and picking a folder with spaces or
-   Chinese characters stores it (`首选附件目录已设置`; `/ego-settings attachments` agrees).
-5. Open it again and press Cancel: `已取消` is reported and `/ego-settings attachments`
+   Chinese characters stores it (`Preferred screenshot folder set`; `/ego-settings attachments` agrees).
+5. Open it again and press Cancel: `Canceled` is reported and `/ego-settings attachments`
    still shows the same directory.
 6. Pick a directory that cannot be written (e.g. a read-only share or `C:\Windows\System32`):
    the failure is reported, the stored choice is unchanged, and the typed-path
    fallback prompt appears; cancelling it also changes nothing.
-7. Take a screenshot, then open `本会话截图`: the row names the ID, size, page and
-   absolute file path; Enter opens the PNG in the OS viewer, and `按 ID 打开…` opens
+7. Take a screenshot, then open `Session Screenshots`: the row names the ID, size, page and
+   absolute file path; Enter opens the PNG in the OS viewer, and `Open by ID…` opens
    an older picture typed as a full ID or a unique prefix (a foreign or invented ID
-   is refused). `恢复默认目录` returns to `PI_EGO_HOME/attachments`.
+   is refused). `Restore Default Folder` returns to `PI_EGO_HOME/attachments`.
 8. Call `browser_handoff`, log in by hand, then open `/ego-settings` and pick
-   `恢复浏览器控制`: Pi re-reads the tab and continues the task on its own. Esc from
+   `Resume Browser Control`: Pi re-reads the tab and continues the task on its own. Esc from
    the list closes the settings with `/ego-settings status` still working.
 
 With PowerShell 7 installed the dialog is the Explorer-style one; with only

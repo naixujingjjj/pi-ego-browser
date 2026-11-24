@@ -335,10 +335,10 @@ export default async function piEgoBrowser(pi) {
     name: "browser_handoff",
     label: "Browser Hand Off",
     description:
-      "Hand the current tab to the user for something only a human can do (login, CAPTCHA, 2FA, a manual confirmation), then stop. While the user has control, this session's browser tools refuse to run until the user takes control back from /ego-settings (恢复浏览器控制).",
+      "Hand the current tab to the user for something only a human can do (login, CAPTCHA, 2FA, a manual confirmation), then stop. While the user has control, this session's browser tools refuse to run until the user takes control back from /ego-settings (Resume Browser Control).",
     promptSnippet: "Hand the browser tab to the user and pause browser tools",
     promptGuidelines: [
-      "Use browser_handoff as soon as a step needs the user (login without credentials, CAPTCHA, 2FA); then stop and tell the user to take control back from /ego-settings (恢复浏览器控制).",
+      "Use browser_handoff as soon as a step needs the user (login without credentials, CAPTCHA, 2FA); then stop and tell the user to take control back from /ego-settings (Resume Browser Control).",
       "Do not retry browser tools while browser_handoff is in effect.",
     ],
     parameters: Type.Object({
@@ -384,25 +384,25 @@ export default async function piEgoBrowser(pi) {
   };
 
 const SETTINGS_USAGE = [
-    "/ego-settings                     打开 Ego 浏览器设置（菜单：info / 截图附件目录 / 恢复默认目录 / 本会话截图 / 恢复浏览器控制）",
-    "/ego-settings info                浏览器状态（菜单 info 一栏；与 status 完全相同）",
-    "/ego-settings status              浏览器状态",
-    "/ego-settings resume              用户手动接手后恢复 Pi 控制并重新读取页面（只在用户主动输入时恢复）",
-    "/ego-settings attachments         看首选目录、默认目录、登记的存储根和本会话截图",
-    "/ego-settings attachments set <绝对路径>   设置首选附件目录（可带引号；空格原样保留）",
-    "/ego-settings attachments reset   清除首选目录，新截图回到默认库",
-    "/ego-settings attachments open <ID>  用系统看图程序打开本会话的一张截图",
-    "/ego-settings help                这份说明",
-    "截图默认落盘：PI_EGO_HOME/attachments，或在设置里选的首选目录",
+    "/ego-settings                     Open Ego Browser Settings",
+    "/ego-settings info                Show browser status (same as status)",
+    "/ego-settings status              Show browser status",
+    "/ego-settings resume              Return control to Pi and read the current page again",
+    "/ego-settings attachments         List screenshot folders and session screenshots",
+    "/ego-settings attachments set <absolute path>   Set the preferred screenshot folder",
+    "/ego-settings attachments reset   Restore the default screenshot folder",
+    "/ego-settings attachments open <ID>  Open a session screenshot in the default image viewer",
+    "/ego-settings help                Show this help",
+    "Screenshots use the preferred folder or PI_EGO_HOME/attachments by default.",
   ].join("\n");
 
   const ATTACHMENTS_USAGE = [
-    "/ego-settings                   打开 Ego 浏览器设置（info 显示浏览器状态；截图附件目录用 Windows 文件夹选择器；本会话截图可查看 / 按 ID 打开）",
-    "/ego-settings attachments       看首选目录、默认目录、登记的存储根和本会话截图",
-    "/ego-settings attachments set <绝对路径> 设置首选附件目录（可带引号；空格原样保留）",
-    "/ego-settings attachments reset 清除首选目录，新截图回到默认库",
-    "/ego-settings attachments open <ID> 用系统看图程序打开本会话的一张截图",
-    "默认库：PI_EGO_HOME/attachments",
+    "/ego-settings                   Open Ego Browser Settings",
+    "/ego-settings attachments       List screenshot folders and session screenshots",
+    "/ego-settings attachments set <absolute path> Set the preferred screenshot folder",
+    "/ego-settings attachments reset Restore the default screenshot folder",
+    "/ego-settings attachments open <ID> Open a session screenshot in the default image viewer",
+    "Default screenshot folder: PI_EGO_HOME/attachments",
   ].join("\n");
 
   const updateAttachmentsDir = async (ctx, dir) => {
@@ -418,17 +418,17 @@ const SETTINGS_USAGE = [
   const browserStatusForInfo = async (ctx) => {
     try {
       const outcome = await service.status({ sessionKey: sessionKeyOf(ctx) });
-      const text = outcome.ok ? outcome.text : `状态读取失败：${outcome.message}`;
+      const text = outcome.ok ? outcome.text : `Could not read browser status: ${outcome.message}`;
       const first = text.split("\n")[0] || "";
       return {
         text,
         failed: !outcome.ok,
-        summary: first.replace(/^浏览器：/, "").trim(),
+        summary: first.replace(/^Browser:\s*/, "").trim(),
         handedOff: Boolean(outcome.details?.session?.handedOff),
       };
     } catch (error) {
-      const text = `状态读取失败：${error?.message || error}`;
-      return { text, failed: true, summary: "状态读取失败", handedOff: false };
+      const text = `Could not read browser status: ${error?.message || error}`;
+      return { text, failed: true, summary: "Status unavailable", handedOff: false };
     }
   };
 
@@ -459,14 +459,14 @@ const SETTINGS_USAGE = [
     uiNotify(ctx, picked.message, picked.available === false ? "info" : "error");
 
     // Same fallback as before: type the path (quotes and spaces are fine).
-    const input = await ctx.ui.input("截图附件目录（绝对路径）", preferred || defaultDir);
+    const input = await ctx.ui.input("Screenshot folder (absolute path)", preferred || defaultDir);
     if (input === undefined) {
-      uiNotify(ctx, "已取消，截图附件目录保持不变。", "info");
+      uiNotify(ctx, "Canceled. The screenshot folder is unchanged.", "info");
       return "";
     }
     const dir = parsePathArgument(input);
     if (!dir) {
-      uiNotify(ctx, "请输入目录路径。", "error");
+      uiNotify(ctx, "Enter a folder path.", "error");
       return "";
     }
     return dir;
@@ -475,18 +475,18 @@ const SETTINGS_USAGE = [
   /** Hand one verified file to Windows' default image viewer. */
   const openFileWithViewer = async (ctx, file) => {
     if (typeof pi.exec !== "function") {
-      const text = `这个运行环境不能打开程序；文件在：${file}`;
+      const text = `The image viewer is unavailable. File: ${file}`;
       uiNotify(ctx, text, "info");
       return text;
     }
     try {
       // `explorer.exe <file>` hands the file to the default image viewer.
       await pi.exec("explorer.exe", [file], { timeout: 10000 });
-      const text = `已用系统默认程序打开：${file}`;
+      const text = `Opened in the default image viewer: ${file}`;
       uiNotify(ctx, text, "info");
       return text;
     } catch (error) {
-      const text = `打开失败（${error?.message || error}）；文件在：${file}`;
+      const text = `Could not open the image (${error?.message || error}). File: ${file}`;
       uiNotify(ctx, text, "error");
       return text;
     }
@@ -501,7 +501,7 @@ const SETTINGS_USAGE = [
   const openSessionAttachment = async (ctx, sessionKey, id) => {
     const wanted = String(id ?? "").trim();
     if (!wanted) {
-      const text = "用法：/ego-settings attachments open <附件 ID>（/ego-settings 的「本会话截图」里能看到 ID）";
+      const text = "Usage: /ego-settings attachments open <ID>. Find the ID under Session Screenshots.";
       uiNotify(ctx, text, "error");
       return text;
     }
@@ -524,11 +524,11 @@ const SETTINGS_USAGE = [
   const resumeBrowser = async (ctx, sessionKey) => {
     const outcome = await withBrowserLock(() => service.resume({ sessionKey }));
     if (!outcome.ok) {
-      const text = `恢复失败：${outcome.message}`;
+      const text = `Could not resume browser control: ${outcome.message}`;
       uiNotify(ctx, text, "error");
       return text;
     }
-    uiNotify(ctx, "浏览器控制权已恢复，请继续当前任务。", "info");
+    uiNotify(ctx, "Pi has browser control and will continue the task.", "info");
     pi.sendMessage(
       { customType: "pi-ego-browser-resume", content: outcome.text, display: false },
       { deliverAs: "followUp", triggerTurn: true },
@@ -568,9 +568,9 @@ const SETTINGS_USAGE = [
       }
       if (action === "resume") return resumeBrowser(ctx, sessionKey);
       if (action === "open-id") {
-        const input = await ctx.ui.input("截图附件 ID（完整 64 位或唯一前缀）", "");
+        const input = await ctx.ui.input("Screenshot ID (64 characters or a unique prefix)", "");
         if (input === undefined) {
-          uiNotify(ctx, "已取消。", "info");
+          uiNotify(ctx, "Canceled.", "info");
           continue;
         }
         await openSessionAttachment(ctx, sessionKey, input);
@@ -596,7 +596,7 @@ const SETTINGS_USAGE = [
     if (sub.action === "set") {
       const dir = parsePathArgument(sub.arg);
       if (!dir) {
-        const text = "用法：/ego-settings attachments set <绝对路径>（目录名里有空格就原样写，或加引号）";
+        const text = "Usage: /ego-settings attachments set <absolute path>. Paths with spaces may be quoted.";
         notify(text, "error");
         return text;
       }
@@ -613,7 +613,7 @@ const SETTINGS_USAGE = [
       uiNotify(ctx, outcome.text, outcome.ok ? "info" : "error");
       return outcome.text;
     }
-    const text = `不认识的子命令“${sub.action}”。\n${ATTACHMENTS_USAGE}`;
+    const text = `Unknown attachments action: ${sub.action}.\n${ATTACHMENTS_USAGE}`;
     notify(text, "error");
     return text;
   };
@@ -628,12 +628,12 @@ const SETTINGS_USAGE = [
   const runSettingsWithoutTui = async (ctx, parsed, sessionKey, { bare = false, interactive = false } = {}) => {
     if (parsed.action === "status" || parsed.action === "info") {
       const outcome = await service.status({ sessionKey });
-      const text = outcome.ok ? outcome.text : `状态读取失败：${outcome.message}`;
+      const text = outcome.ok ? outcome.text : `Could not read browser status: ${outcome.message}`;
       // The hint belongs to a host with no interactive terminal. Inside the TUI
       // the menu (and this same action) is one key away, so it would be wrong.
       const hint = interactive
         ? ""
-        : "（这个环境没有可用的交互终端：菜单在 Pi 的 TUI 里；这里用 /ego-settings status | resume | attachments。）";
+        : "The settings menu requires an interactive terminal. Here, use /ego-settings status, resume, or attachments.";
       const shown = hint ? `${hint}\n${text}` : text;
       uiNotify(ctx, shown, outcome.ok ? "info" : "error");
       return bare ? shown : text;
@@ -648,14 +648,14 @@ const SETTINGS_USAGE = [
       uiNotify(ctx, SETTINGS_USAGE, "info");
       return SETTINGS_USAGE;
     }
-    const text = `不认识的动作“${parsed.action}”。\n${SETTINGS_USAGE}`;
+    const text = `Unknown settings action: ${parsed.action}.\n${SETTINGS_USAGE}`;
     uiNotify(ctx, text, "error");
     return text;
   };
 
   pi.registerCommand("ego-settings", {
     description:
-      "Ego 浏览器设置：info 浏览器状态 · 本会话截图（查看 / 按 ID 打开）· 恢复浏览器控制 · 截图附件目录（Windows 选择器）；非交互环境用 /ego-settings status|resume|attachments",
+      "Ego Browser Settings: browser status, screenshot folder, session screenshots, and browser control",
     handler: async (args, ctx) => {
       const raw = String(args ?? "").trim();
       const parsed = parseSettingsCommand(raw);

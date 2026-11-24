@@ -11,7 +11,7 @@ desktop app, an `ego-browser` command on `PATH`, or an Ego skill.
 
 Platform: Windows 10/11, Node 22+ (the Node that runs Pi).
 
-> 中文速览：装 `dist\pi-ego-browser-0.1.7.tgz` 一个包即可，不用装 ego lite
+> 中文速览：装 `dist\pi-ego-browser-0.1.8.tgz` 一个包即可，不用装 ego lite
 > 桌面程序、不用改 `PATH`、不用加载 Skill。工具：`browser_open` /
 > `browser_read` / `browser_click` / `browser_fill` / `browser_tabs` /
 > `browser_screenshot` / `browser_show_screenshot` /
@@ -21,11 +21,11 @@ Platform: Windows 10/11, Node 22+ (the Node that runs Pi).
 > 拿到的是 ID 和可打开的绝对路径。**普通截图本身就只落一份**：拍完就已经存在首选目录
 > （不可用才回退默认附件库）里，说「保存这张」「截图保存下来」不需要也不会再复制第二份，
 > 只会回答那个原件路径；只有你明确给出另一个完整 `.png` 绝对路径时才复制一份，且不覆盖。
-> 大于 6 MiB 的截图照样存、照样能按 ID 打开和另存，只是不会进模型请求或行内显示。
+> 大于 6 MiB 的截图照样存、照样能Open by ID和另存，只是不会进模型请求或行内显示。
 > 整个插件只注册一个斜杠命令 `/ego-settings`（没有单独的 `/ego`）：在 Pi 的斜杠菜单
-> 选择 `Ego 浏览器设置`，菜单里有 `info`（就是浏览器状态，按 Enter 看，Esc 返回设置）、
-> `截图附件目录`（按 Enter 直接弹出 Windows 自己的文件夹选择器）、`恢复默认目录`、
-> `本会话截图`（选一张用系统默认程序打开，或按 ID 打开更早的一张）和 `恢复浏览器控制`
+> 选择 `Ego Browser Settings`，菜单里有 `Info`（就是浏览器状态，按 Enter 看，Esc 返回设置）、
+> `Screenshot Folder`（按 Enter 直接弹出 Windows 自己的文件夹选择器）、`Restore Default Folder`、
+> `Session Screenshots`（选一张用系统默认程序打开，或Open by ID更早的一张）和 `Resume Browser Control`
 > （接管后由你主动恢复 Pi 并继续任务）。没有交互终端时用同一个命令的子动作：
 > `/ego-settings status|info`、`resume`、`attachments [list|set|reset|open]`。
 > 全部状态放在 `%LOCALAPPDATA%\pi-ego-browser`（可用 `PI_EGO_HOME` 改），
@@ -35,7 +35,7 @@ Platform: Windows 10/11, Node 22+ (the Node that runs Pi).
 ## Install
 
 ```powershell
-pi install "npm:pi-ego-browser@file:F:/dsh/pi-ego-browser/dist/pi-ego-browser-0.1.7.tgz"
+pi install "npm:pi-ego-browser@file:F:/dsh/pi-ego-browser/dist/pi-ego-browser-0.1.8.tgz"
 ```
 
 Restart Pi or run `/reload`. Use the `npm:<name>@file:<path>` form to install
@@ -92,11 +92,11 @@ has up to five rows:
 
 | Row | What Enter does |
 | --- | --- |
-| `info` | Shows exactly the browser status `/ego-settings status` prints (running?, which tab, handed off?). Esc returns to the list; Esc in the list closes the settings. |
-| `截图附件目录` | Opens Windows' own folder browser dialog and stores the folder you pick. Cancel leaves the stored choice exactly as it was. |
-| `恢复默认目录` | Shown only while a preferred directory is set; goes back to the default library. |
-| `本会话截图` | This session's pictures, newest first, each row naming its ID, size, page and absolute file path. Enter opens the row with the OS viewer; `按 ID 打开…` takes a full 64-character ID or a unique prefix, so a picture older than the short list still opens. |
-| `恢复浏览器控制` | Shown only while the user holds the browser: takes control back, re-reads the current tab, and sends Pi a follow-up so the task continues. |
+| `Info` | Shows exactly the browser status `/ego-settings status` prints (running?, which tab, handed off?). Esc returns to the list; Esc in the list closes the settings. |
+| `Screenshot Folder` | Opens Windows' own folder browser dialog and stores the folder you pick. Cancel leaves the stored choice exactly as it was. |
+| `Restore Default Folder` | Shown only while a preferred directory is set; goes back to the default library. |
+| `Session Screenshots` | This session's pictures, newest first, each row naming its ID, size, page and absolute file path. Enter opens the row with the OS viewer; `Open by ID…` takes a full 64-character ID or a unique prefix, so a picture older than the short list still opens. |
+| `Resume Browser Control` | Shown only while the user holds the browser: takes control back, re-reads the current tab, and sends Pi a follow-up so the task continues. |
 
 The directory row uses the native dialog — no extra program is installed for
 it. When PowerShell 7 (`pwsh`) is installed the dialog is the Explorer-style
@@ -190,7 +190,7 @@ refused with a message saying so rather than clicking something else.
 
 **Hand off.** When a step needs a human, `browser_handoff` pauses this
 session's browser tools and tells the user what to do in the browser window.
-After the user is done, the `恢复浏览器控制` row of `/ego-settings` (or
+After the user is done, the `Resume Browser Control` row of `/ego-settings` (or
 `/ego-settings resume` where the menu is unavailable) takes control back,
 re-reads the same tab, and sends Pi a follow-up so the task continues. If the tab
 was closed in the meantime, Pi says so instead of pretending.
@@ -270,7 +270,7 @@ children, and neither can the browser runtime it would launch).
 | `/ego-settings attachments` parsing (quotes, spaces) | `test/command.test.mjs` |
 | The native folder picker: what the PowerShell script asks Windows for, the UTF-8 file transport of the start directory and the choice, a pick, a cancel, a timeout, a non-zero exit, an unusable WinForms, an unusable host and a path the script should never return | `test/folder-picker.test.mjs` |
 | Lazy TUI image loading and text fallback | `test/render.test.mjs` |
-| Loaded extension entry: tool inventory, only the `/ego-settings` command, no image content block, `/ego-settings attachments` wiring, row renderer, the `info` panel repeating the status text verbatim (`info` and `status` are one action), the directory row driving the picker, cancel, reset, the typed-path fallback, the screenshot panel with `按 ID 打开…`, and the resume row | `test/ego-extension.test.mjs` |
+| Loaded extension entry: tool inventory, only the `/ego-settings` command, no image content block, `/ego-settings attachments` wiring, row renderer, the `info` panel repeating the status text verbatim (`info` and `status` are one action), the directory row driving the picker, cancel, reset, the typed-path fallback, the screenshot panel with `Open by ID…`, and the resume row | `test/ego-extension.test.mjs` |
 | Real Pi session on a local faux provider: transcript size, vision request bound to the tool result, next turn, lookback legality, text-only model, two sessions, new process | `test/pi-session.test.mjs` |
 | Browser resolution, download, SHA-256, resume-after-interrupt, unpack | `test/chromium.test.mjs` against a local HTTP server |
 | Run lock, result parsing, foreign-endpoint guard | `test/runtime.test.mjs` |
@@ -306,7 +306,7 @@ Pi tool call ──► extension (extensions/ego-browser.js)
   resolving a number is refused unless all four still match.
 - **Ownership is enforced twice.** The extension refuses tools while a session is
   handed off, and the runtime rejects page operations with
-  `EGO_TASK_SPACE_USER_IN_CONTROL` — only the user's `恢复浏览器控制` row (or
+  `EGO_TASK_SPACE_USER_IN_CONTROL` — only the user's `Resume Browser Control` row (or
   `/ego-settings resume`) takes control back.
 - **One run at a time per state root.** A lock file serializes runs — and attachment
   config writes and publishes — so two sessions cannot interleave writes to the

@@ -176,7 +176,7 @@ test("a Pi session with a vision model: small transcript, this turn's picture on
     const results = toolResults(sessionEntries(file));
     const last = results[results.length - 1];
     assert.equal(last.message.isError, true);
-    assert.match(last.message.content[0].text, /本会话里没有附件/);
+    assert.match(last.message.content[0].text, /No screenshot with ID/);
   } finally {
     pi.dispose();
   }

@@ -14,7 +14,7 @@
 //
 // A task space that is not owned by the agent (`agentDelegatedToUser`, `user`)
 // is never taken over here. The `/ego-settings` resume action (the menu's
-// 「恢复浏览器控制」 row, or `/ego-settings resume` without a TUI) is the only
+// Resume Browser Control row, or `/ego-settings resume` without a TUI) is the only
 // path that does that.
 import { RESULT_SENTINEL } from "./runtime.js";
 
@@ -111,7 +111,7 @@ function piErrorPayload(error) {
 function piBlocked(payload) {
   PI_ERR(
     "HANDED_TO_USER",
-    "用户正在控制这个浏览器任务空间（ownership=" + payload.ownership + "）；等用户在 Pi 里从 /ego-settings 的「恢复浏览器控制」恢复后再继续。",
+    "用户正在控制这个浏览器任务空间（ownership=" + payload.ownership + "）；等用户在 Pi 里从 /ego-settings 的「Resume Browser Control」恢复后再继续。",
     { spaceId: payload.id, spaceName: payload.name, ownership: payload.ownership },
   );
 }

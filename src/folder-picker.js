@@ -43,7 +43,7 @@ export const PICKER_RESULT_NAME = "result.json";
 // property, so it is only the fallback: the first shell that starts is used.
 export const PICKER_SHELLS = ["pwsh.exe", "powershell.exe"];
 export const PICKER_TIMEOUT_MS = 300000;
-export const PICKER_DESCRIPTION = "选择截图附件目录（Esc 或“取消”保持当前设置）";
+export const PICKER_DESCRIPTION = "Choose a screenshot folder. Press Esc or Cancel to keep the current folder.";
 
 /**
  * The PowerShell program. Kept ASCII-only on purpose: PowerShell 5.1 reads a
@@ -212,10 +212,10 @@ export async function pickFolder({
   shell = "",
 } = {}) {
   if (typeof exec !== "function") {
-    return unavailable("这个运行环境不能启动 Windows 文件夹选择器；请手动输入目录。");
+    return unavailable("The Windows folder dialog is unavailable here. Enter the folder path.");
   }
   if (platform !== "win32") {
-    return unavailable("Windows 文件夹选择器只在 Windows 上可用；请手动输入目录。");
+    return unavailable("The folder dialog requires Windows. Enter the folder path.");
   }
   const started = performance.now();
   const shells = shellCandidates(env, shell);
@@ -243,7 +243,7 @@ export async function pickFolder({
       try {
         run = await exec(shellExe, args, { timeout: timeoutMs });
       } catch (error) {
-        return failure(`启动系统文件夹选择器失败（${error?.message || error}）；目录保持不变。`, "PICKER_SPAWN_FAILED");
+        return failure(`Could not start the folder dialog (${error?.message || error}). The screenshot folder is unchanged.`, "PICKER_SPAWN_FAILED");
       }
 
       const payload = readPayload(resultPath);
@@ -252,7 +252,7 @@ export async function pickFolder({
       const killed = run?.killed === true;
 
       if (killed) {
-        return failure("文件夹选择器等待超时，已经关闭；目录保持不变。", "PICKER_TIMEOUT", { exitCode, shell: shellExe });
+        return failure("The folder dialog timed out and closed. The screenshot folder is unchanged.", "PICKER_TIMEOUT", { exitCode, shell: shellExe });
       }
       if (!payload && /ENOENT|not recognized|not found/i.test(stderr)) {
         tried.push(`${shellExe}: ${stderr}`);
@@ -262,20 +262,20 @@ export async function pickFolder({
       if (payload?.error) {
         const detail = String(payload.error).slice(0, 300);
         if (payload.stage === "assembly") {
-          return unavailable(`系统文件夹选择器不可用（${detail}）；请手动输入目录。`);
+          return unavailable(`The folder dialog is unavailable (${detail}). Enter the folder path.`);
         }
-        return failure(`文件夹选择器出错：${detail}；目录保持不变。`, "PICKER_DIALOG_FAILED", { exitCode, shell: shellExe });
+        return failure(`The folder dialog failed (${detail}). The screenshot folder is unchanged.`, "PICKER_DIALOG_FAILED", { exitCode, shell: shellExe });
       }
       if (exitCode !== null && exitCode !== 0) {
         return failure(
-          `文件夹选择器失败（退出码 ${exitCode}）${stderr ? `：${stderr}` : ""}；目录保持不变。`,
+          `The folder dialog failed (exit code ${exitCode})${stderr ? `. ${stderr}` : ""}. The screenshot folder is unchanged.`,
           "PICKER_EXIT_CODE",
           { exitCode, shell: shellExe },
         );
       }
       if (!payload) {
         return failure(
-          `文件夹选择器没有返回结果${exitCode === null ? "" : `（退出码 ${exitCode}）`}${stderr ? `：${stderr}` : ""}；目录保持不变。`,
+          `The folder dialog returned no result${exitCode === null ? "" : ` (exit code ${exitCode})`}${stderr ? `. ${stderr}` : ""}. The screenshot folder is unchanged.`,
           "PICKER_NO_RESULT",
           { exitCode, shell: shellExe },
         );
@@ -286,7 +286,7 @@ export async function pickFolder({
           available: true,
           cancelled: true,
           code: "PICKER_CANCELLED",
-          message: "已取消，截图附件目录保持不变。",
+          message: "Canceled. The screenshot folder is unchanged.",
           shell: shellExe,
           exitCode,
           durationMs: Math.round(performance.now() - started),
@@ -297,7 +297,7 @@ export async function pickFolder({
       const invalid = !path || path.includes('"') || /[\u0000-\u001f]/.test(path) || !win32.isAbsolute(path);
       if (invalid) {
         return failure(
-          `文件夹选择器返回的路径无效（${JSON.stringify(payload.path ?? null)}）；目录保持不变。`,
+          `The folder dialog returned an invalid path (${JSON.stringify(payload.path ?? null)}). The screenshot folder is unchanged.`,
           "PICKER_INVALID_PATH",
           { exitCode, shell: shellExe },
         );
@@ -315,9 +315,9 @@ export async function pickFolder({
       });
     }
 
-    return unavailable(`系统文件夹选择器不可用（${tried.join("；") || shells.join("、")}）；请手动输入目录。`);
+    return unavailable(`The folder dialog is unavailable (${tried.join(", ") || shells.join(", ")}). Enter the folder path.`);
   } catch (error) {
-    return failure(`文件夹选择器失败（${error?.message || error}）；目录保持不变。`, "PICKER_FAILED");
+    return failure(`The folder dialog failed (${error?.message || error}). The screenshot folder is unchanged.`, "PICKER_FAILED");
   } finally {
     if (dir) cleanup(dir);
   }

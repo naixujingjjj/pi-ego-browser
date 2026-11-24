@@ -118,9 +118,9 @@ if (installed.code === 0) {
     egoSettings: byName("ego-settings")?.sourceInfo ?? null,
     removedEgo: byName("ego") ?? null,
     promptsHandled: responses.filter((entry) => entry.command === "prompt" && entry.data?.disposition === "handled").length,
-    statusNotify: notifies.find((message) => /浏览器：/.test(message)) ?? null,
-    attachmentsNotify: notifies.find((message) => /附件库：|首选附件库|首选目录/.test(message)) ?? null,
-    settingsHint: notifies.find((message) => /交互终端/.test(message)) ?? null,
+    statusNotify: notifies.find((message) => /Browser:/.test(message)) ?? null,
+    attachmentsNotify: notifies.find((message) => /Preferred folder:/.test(message)) ?? null,
+    settingsHint: notifies.find((message) => /interactive terminal/.test(message)) ?? null,
     loadingProblem: /failed to load|extension error|cannot find module/i.test(raw),
     stateRoot: stateDir,
   };
