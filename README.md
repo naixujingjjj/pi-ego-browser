@@ -21,11 +21,11 @@ Platform: Windows 10/11, Node 22+ (the Node that runs Pi).
 > 拿到的是 ID 和可打开的绝对路径。**普通截图本身就只落一份**：拍完就已经存在首选目录
 > （不可用才回退默认附件库）里，说「保存这张」「截图保存下来」不需要也不会再复制第二份，
 > 只会回答那个原件路径；只有你明确给出另一个完整 `.png` 绝对路径时才复制一份，且不覆盖。
-> 大于 6 MiB 的截图照样存、照样能Open by ID和另存，只是不会进模型请求或行内显示。
+> 大于 6 MiB 的截图照样存、照样能按 ID 打开和另存，只是不会进模型请求或行内显示。
 > 整个插件只注册一个斜杠命令 `/ego-settings`（没有单独的 `/ego`）：在 Pi 的斜杠菜单
 > 选择 `Ego Browser Settings`，菜单里有 `Info`（就是浏览器状态，按 Enter 看，Esc 返回设置）、
 > `Screenshot Folder`（按 Enter 直接弹出 Windows 自己的文件夹选择器）、`Restore Default Folder`、
-> `Session Screenshots`（选一张用系统默认程序打开，或Open by ID更早的一张）和 `Resume Browser Control`
+> `Session Screenshots`（选一张用系统默认程序打开，或按 ID 打开更早的一张）和 `Resume Browser Control`
 > （接管后由你主动恢复 Pi 并继续任务）。没有交互终端时用同一个命令的子动作：
 > `/ego-settings status|info`、`resume`、`attachments [list|set|reset|open]`。
 > 全部状态放在 `%LOCALAPPDATA%\pi-ego-browser`（可用 `PI_EGO_HOME` 改），

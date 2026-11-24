@@ -142,7 +142,7 @@ around them is covered by the suite; these eight checks take a minute.
    `Restore Default Folder` only appears while a preferred directory is set, `Resume Browser Control`
    only while the user holds the browser. No `/ego` command exists in the slash menu.
 3. Enter on `Info`: every line matches what `/ego-settings status` prints
-   (`Browser:`, `State folder:`, `控制权：`). Esc returns to the list, not out of the settings.
+   (`Browser:`, `State folder:`, `Control:`). Esc returns to the list, not out of the settings.
 4. Enter on `Screenshot Folder`: the Windows folder dialog opens **in front** of the
    terminal, starts in the directory in use, and picking a folder with spaces or
    Chinese characters stores it (`Preferred screenshot folder set`; `/ego-settings attachments` agrees).
