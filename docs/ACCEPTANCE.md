@@ -24,9 +24,9 @@ browser profiles, and npm package directory.
 ## 1. Build the tarball and check its contents
 
 ```powershell
-cd F:\dsh\pi-ego-browser
+cd pi-ego-browser                                   # the clone you build from
 npm install --ignore-scripts --cache .npm-cache     # only typebox, a devDependency
-npm run pack:build                                   # -> dist\pi-ego-browser-0.1.8.tgz
+npm run pack:build                                   # -> dist\pi-ego-browser-<version>.tgz
 npm run pack:check                                   # reads the tarball, no unpacking
 npm run pack:load                                    # packaged entry loads with Pi's host packages
 npm run smoke:pi                                     # pi install + pi --mode rpc in a throwaway config
@@ -110,11 +110,12 @@ Each step asserts on its own, so one failure does not hide the rest:
 The install line the suite runs is the one verified by hand on Pi 1.6.0:
 
 ```powershell
-pi install "npm:pi-ego-browser@file:F:/dsh/pi-ego-browser/dist/pi-ego-browser-0.1.8.tgz"
+pi install "npm:pi-ego-browser@file:dist/pi-ego-browser-<version>.tgz"
 ```
 
-The `npm:<name>@file:<path>` form matters: a bare `file:` path is recorded but
-Pi cannot find the extension on the next start.
+Run it from the clone root after step 1, with `<version>` replaced by the version
+that step printed. The `npm:<name>@file:<path>` form matters: a bare `file:`
+path is recorded but Pi cannot find the extension on the next start.
 
 ## 4. What this suite does not cover by itself
 
@@ -176,7 +177,7 @@ piped stdio. Tests that launch a browser ran on Windows outside that sandbox.
 | Isolated real Pi: install + `pi --mode rpc` | `npm run smoke:pi` | ok: `pi install` into `.tmp/iso-pi-smoke/agent` exits 0, the installed package supplies `/ego-settings` (`origin: package`), `get_commands` offers no `ego`, `/ego-settings status`, `/ego-settings attachments` and bare `/ego-settings` all answer (3 handled prompts), no loading problem. Writes `.tmp/iso-pi-smoke/summary.json`. |
 | Unit suite on Windows | `npm test` | 125 pass, including another writer occupying the destination during an explicit copy |
 | Real browser end to end (phases 1–4) | `node tools\acceptance.mjs` | 26 pass. The final tarball hash and per-step results are in `.tmp/acceptance/summary.json`. |
-| Cross-drive screenshot and save on Windows | Isolated browser state on C:, attachment library on F: | One PNG in the library after capture and two normal saves. Both saves returned its path, the old export directory was absent, and staging was empty. |
+| Cross-drive screenshot and save on Windows | Isolated browser state on one drive, attachment library on another | One PNG in the library after capture and two normal saves. Both saves returned its path, the old export directory was absent, and staging was empty. |
 
 Nothing from the run touches a real Pi configuration, the real `%LOCALAPPDATA%`
 state root or a user attachment library: every step uses `.tmp/` and a

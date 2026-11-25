@@ -11,35 +11,42 @@ desktop app, an `ego-browser` command on `PATH`, or an Ego skill.
 
 Platform: Windows 10/11, Node 22+ (the Node that runs Pi).
 
-> 中文速览：装 `dist\pi-ego-browser-0.1.8.tgz` 一个包即可，不用装 ego lite
-> 桌面程序、不用改 `PATH`、不用加载 Skill。工具：`browser_open` /
-> `browser_read` / `browser_click` / `browser_fill` / `browser_tabs` /
-> `browser_screenshot` / `browser_show_screenshot` /
-> `browser_save_screenshot` / `browser_handoff`。
-> 截图是**附件库**里的内容寻址文件：工具只返回 64 位附件 ID、大小、MIME 和存储根，
-> 图片字节不写进会话。视觉模型在**本轮**请求里看到图；纯文字模型 / 无图终端 / RPC
-> 拿到的是 ID 和可打开的绝对路径。**普通截图本身就只落一份**：拍完就已经存在首选目录
-> （不可用才回退默认附件库）里，说「保存这张」「截图保存下来」不需要也不会再复制第二份，
-> 只会回答那个原件路径；只有你明确给出另一个完整 `.png` 绝对路径时才复制一份，且不覆盖。
-> 大于 6 MiB 的截图照样存、照样能按 ID 打开和另存，只是不会进模型请求或行内显示。
-> 整个插件只注册一个斜杠命令 `/ego-settings`（没有单独的 `/ego`）：在 Pi 的斜杠菜单
-> 选择 `Ego Browser Settings`，菜单里有 `Info`（就是浏览器状态，按 Enter 看，Esc 返回设置）、
-> `Screenshot Folder`（按 Enter 直接弹出 Windows 自己的文件夹选择器）、`Restore Default Folder`、
-> `Session Screenshots`（选一张用系统默认程序打开，或按 ID 打开更早的一张）和 `Resume Browser Control`
-> （接管后由你主动恢复 Pi 并继续任务）。没有交互终端时用同一个命令的子动作：
-> `/ego-settings status|info`、`resume`、`attachments [list|set|reset|open]`。
-> 全部状态放在 `%LOCALAPPDATA%\pi-ego-browser`（可用 `PI_EGO_HOME` 改），
-> 浏览器用独立 profile，不动你日常的浏览器配置。验收方法见
-> [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。
-
 ## Install
 
+The Ego runtime is vendored in this repository, so installing from the GitHub
+source is the whole setup: no tarball to build, no runtime dependency to add.
+
 ```powershell
-pi install "npm:pi-ego-browser@file:F:/dsh/pi-ego-browser/dist/pi-ego-browser-0.1.8.tgz"
+pi install git:github.com/naixujingjjj/pi-ego-browser
 ```
 
-Restart Pi or run `/reload`. Use the `npm:<name>@file:<path>` form to install
-a local tarball with Pi 1.6.0.
+Try it without touching your settings:
+
+```powershell
+pi -e git:github.com/naixujingjjj/pi-ego-browser
+```
+
+Pi clones the package into its own directory. Restart Pi or run `/reload`
+afterwards; `pi list` shows the entry and `pi remove <source>` removes it. Pin a
+version by appending `@<tag>`, `@<branch>` or `@<commit>` to the source (this
+repository has no tags yet, so use a commit hash when you need a fixed version).
+
+### From a tarball
+
+Build output is not committed (it is git-ignored), so build a tarball from a
+clone:
+
+```powershell
+git clone https://github.com/naixujingjjj/pi-ego-browser.git
+cd pi-ego-browser
+npm install --ignore-scripts --cache .npm-cache     # only typebox, a devDependency
+npm run pack:build                                   # -> dist/pi-ego-browser-<version>.tgz
+pi install "npm:pi-ego-browser@file:dist/pi-ego-browser-<version>.tgz"
+```
+
+`<version>` is the version `pack:build` printed (the one in `package.json`). The
+`npm:<name>@file:<path>` form matters with Pi 1.6.0: a bare `.tgz` path is
+recorded, but Pi cannot find the extension on the next start.
 
 The first browser tool call prepares the browser:
 
@@ -54,7 +61,7 @@ task opens the requested page without leaving a separate startup tab.
 
 ## Use
 
-Just ask: “打开这个页面，把邮箱填上，再截个图。” The model gets these tools:
+Just ask: “Open this page, fill in the email, then take a screenshot.” The model gets these tools:
 
 | Tool | What it does |
 | --- | --- |
@@ -152,8 +159,8 @@ request or an expanded TUI row.
   permanent copy into the attachment library. `browser_save_screenshot` without
   `path` verifies that original (file size, then the digest, in chunks) and
   returns its absolute path and attachment ID; it writes nothing anywhere. So
-  “截图保存下来” / “保存这张” never yields a second file — in particular never
-  another file in an old `screenshots\<session>\` folder.
+  a plain “save the screenshot” / “keep this one” never yields a second file — in
+  particular never another file in an old `screenshots\<session>\` folder.
 - **An explicit destination is the only thing copied.** `browser_save_screenshot
   { path }` is for a user who names a separate copy: the argument must be a full
   absolute path ending in `.png`, and its directory must already exist (none is
