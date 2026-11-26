@@ -137,13 +137,13 @@ test("invalidateSnapshot drops numbering and keeps the reason for later reads", 
     const paths = { sessionsFile: join(temp.dir, "sessions.json") };
     const store = new SessionStore(paths);
     store.recordSnapshot("s1", { spaceId: 1, pageLabel: "p1", url: "http://a/", title: "A", seq: 1, items: [{ n: 1, ref: 1, role: "button", name: "" }] });
-    store.invalidateSnapshot("s1", "标签页已变化");
+    store.invalidateSnapshot("s1", "the tabs changed");
     const record = store.get("s1");
     assert.equal(record.snapshot, null);
-    assert.equal(record.invalidReason, "标签页已变化");
+    assert.equal(record.invalidReason, "the tabs changed");
     const resolved = store.resolveTarget("s1", "#1");
     assert.equal(resolved.code, "NO_SNAPSHOT");
-    assert.match(resolved.message, /标签页已变化/);
+    assert.match(resolved.message, /the tabs changed/);
   } finally {
     temp.cleanup();
   }

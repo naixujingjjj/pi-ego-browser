@@ -125,7 +125,7 @@ export function selectSessionReference(candidates, wanted) {
     return {
       ok: false,
       code: "ATTACHMENT_ID_AMBIGUOUS",
-      message: `前缀 ${needle} 同时匹配 ${ids.length} 张不同的截图（${ids.map((id) => `${shortId(id)}…`).join("、")}）；写更长的前缀或完整的 64 位 ID。`,
+      message: `The prefix ${needle} matches ${ids.length} different screenshots (${ids.map((id) => `${shortId(id)}…`).join(", ")}); use a longer prefix or the full 64-character ID.`,
       ids,
     };
   }

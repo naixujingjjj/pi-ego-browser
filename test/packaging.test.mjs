@@ -25,9 +25,14 @@ test("every document names the tarball that package.json declares", () => {
   assert.match(version, /^\d+\.\d+\.\d+$/);
   for (const file of ["README.md", "docs/ACCEPTANCE.md"]) {
     const text = read(file);
-    const named = [...text.matchAll(/pi-ego-browser-(\d+\.\d+\.\d+)\.tgz/g)].map((match) => match[1]);
+    // Documents may name the tarball templated (`pi-ego-browser-<version>.tgz`)
+    // because `pack:build` prints the version. Any concrete name must be current.
+    const named = [...text.matchAll(/pi-ego-browser-(<version>|\d+\.\d+\.\d+)\.tgz/g)].map((match) => match[1]);
     assert.ok(named.length > 0, `${file} names a tarball`);
-    for (const name of named) assert.equal(name, version, `${file} names ${name}`);
+    for (const name of named) {
+      if (name === "<version>") continue;
+      assert.equal(name, version, `${file} names ${name}`);
+    }
   }
 });
 
@@ -74,7 +79,10 @@ test("the README documents install, the one command and what was verified", () =
     assert.match(readme, new RegExp(needle), `README mentions ${needle}`);
   }
   const { version } = JSON.parse(read("package.json"));
-  assert.ok(readme.includes(`pi-ego-browser-${version}.tgz`), "the README names the current installation package");
+  assert.ok(
+    readme.includes(`pi-ego-browser-${version}.tgz`) || readme.includes("pi-ego-browser-<version>.tgz"),
+    "the README names the current installation package",
+  );
   // The removed `/ego` command may only appear as history, never as an
   // instruction line: a lone `/ego <action>` line would teach a command Pi no
   // longer registers.

@@ -27,6 +27,23 @@ import { BrowserService } from "../src/tools.js";
 
 const SESSION_FALLBACK = "default";
 
+/**
+ * The browser tools this extension registers, in the order they are used. The
+ * session-start self-check needs the names to keep them reachable in a host that
+ * has no `tool_search`.
+ */
+const BROWSER_TOOL_NAMES = Object.freeze([
+  "browser_open",
+  "browser_read",
+  "browser_click",
+  "browser_fill",
+  "browser_tabs",
+  "browser_screenshot",
+  "browser_show_screenshot",
+  "browser_save_screenshot",
+  "browser_handoff",
+]);
+
 function sessionKeyOf(ctx) {
   try {
     const id = ctx?.sessionManager?.getSessionId?.();
@@ -89,13 +106,13 @@ function makeAttachmentRenderer(tui, libraryFor) {
     if (options.isPartial || !attachment?.id) return new tui.Text(raw, 0, 0);
     const page = [attachment.pageLabel, attachment.url].filter(Boolean).join(" · ");
     const lines = [
-      `${theme.fg("success", `附件 ${shortId(attachment.id)}…`)} ${theme.fg("dim", `${
+      `${theme.fg("success", `Attachment ${shortId(attachment.id)}…`)} ${theme.fg("dim", `${
         formatBytes(attachment.bytes)
       }${page ? ` · ${page}` : ""}`)}`,
-      theme.fg("dim", `文件：${details.path || "（解析附件库路径）"}`),
+      theme.fg("dim", `File: ${details.path || "(resolve the attachment library path)"}`),
     ];
     if (!options.expanded) {
-      lines.push(theme.fg("dim", context.showImages ? "展开这一行查看图片" : "图片显示已关闭：可以用上面的文件路径打开"));
+      lines.push(theme.fg("dim", context.showImages ? "Expand this row to see the image" : "Image display is off: open the file path above instead"));
       return new tui.Text(lines.join("\n"), 0, 0);
     }
     return createScreenshotView(tui, {
@@ -126,6 +143,11 @@ export default async function piEgoBrowser(pi) {
   }
 
   const progress = new AsyncLocalStorage();
+  // Deferred by default: the nine browser tools cost about 2,000 tokens per
+  // turn when declared, and a session that never opens a page pays for nothing
+  // until the model loads them with `tool_search`. `PI_EGO_TOOL_EXPOSURE=direct`
+  // keeps the old always-declared behaviour for a host or a user that wants it.
+  const toolExposure = process.env.PI_EGO_TOOL_EXPOSURE === "direct" ? "direct" : "deferred";
   const service = new BrowserService({
     notify: (message) => progress.getStore()?.(toToolResult({ ok: true, text: message })),
   });
@@ -158,13 +180,14 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_open",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Open",
     description:
-      "Open a URL in the browser task space owned by this Pi session and make it the current tab. Returns the page title, the final URL and the tab label. Follow it with browser_read to get element numbers.",
+      "Open a URL in the browser task space owned by this Pi session and make it the current tab. Returns the page title, the final URL and the tab label. Before clicking or filling, call browser_read to get element numbers.",
     promptSnippet: "Open or navigate a URL in this session's browser task space",
     promptGuidelines: [
-      "Use browser_open to start browser work; it creates this session's own Ego task space on first use and reuses it afterwards.",
-      "After browser_open, call browser_read before clicking or filling: element numbers come from a read.",
+      "Use browser_open first when working with Ego browser tools (browser_*); it creates this session's own Ego task space on first use and reuses it afterwards.",
+      "Before clicking or filling after browser_open, call browser_read to get element numbers; skip browser_read when you only need a screenshot.",
     ],
     parameters: Type.Object({
       url: Type.String({ description: "Absolute http(s), file:// or data: URL to open" }),
@@ -177,6 +200,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_read",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Read",
     description:
       "Read the current page of this session's browser task space as a numbered element tree (role, accessible name, `[#n]` action number). Element numbers are valid only for the page state that printed them: after a navigation, a tab switch or another action that changes the page, read again.",
@@ -197,6 +221,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_click",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Click",
     description:
       "Click one element in the current page: pass an element number from the latest browser_read (`#4` or `4`), or an Ego selector (`@12`, `text=Save`, `loc=role:button[name='Save']`, CSS). Reports the page state afterwards. If the action times out or the result is uncertain, read the page before retrying.",
@@ -216,6 +241,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_fill",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Fill",
     description:
       "Fill one text field, textarea or contenteditable on the current page with `text`, replacing its content and firing input/change events. Pass an element number from the latest browser_read or an Ego selector.",
@@ -235,6 +261,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_tabs",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Tabs",
     description:
       "Manage the tabs of this session's browser task space: list them, open a new one, switch the active tab, or close one. Tabs are owned by this session; another Pi session has its own task space and its own tabs. Switching or opening a tab invalidates element numbers.",
@@ -262,6 +289,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_screenshot",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Screenshot",
     description:
       "Take a screenshot of the current page (or `pageLabel` tab). The raw PNG is stored once in the attachment library and the result returns a stable attachment ID with its size, MIME type and storage root: no image bytes go into the conversation. A vision model sees the picture with the next request of this user turn; on a text-only model, in a non-image TUI and over RPC the ID and the absolute file path are the way to open it.",
@@ -269,7 +297,7 @@ export default async function piEgoBrowser(pi) {
     promptGuidelines: [
       "Take a screenshot when the user requests one or when the task needs visual details the page read cannot provide. Use browser_read for ordinary page lookups.",
       "Screenshots are already saved permanently in the attachment library: keep the returned attachment ID and absolute file path when the user may ask about that picture later, and never expect image bytes in the result.",
-      "When the user says to save the screenshot or keep it, browser_screenshot alone has already saved the only copy: answer with its path/ID. Do not copy it anywhere, and do not call browser_save_screenshot for a normal save.",
+      "When the user says to save the screenshot or keep it, browser_screenshot alone has already saved the only copy: reply directly with the path and ID it returned and call NO tool at all (neither browser_save_screenshot nor another browser_screenshot). Do not copy it anywhere for a normal save.",
       "To look at a picture taken earlier in this session, call browser_show_screenshot with its ID instead of taking the same screenshot again.",
     ],
     parameters: Type.Object({
@@ -285,6 +313,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_show_screenshot",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Show Browser Screenshot",
     description:
       "Load one screenshot taken earlier in this Pi session by its attachment ID (the full 64-character ID from browser_screenshot, or a unique prefix of it). The image is attached to the next model request of this user turn only; the conversation keeps just the ID and path. Use it when the user asks to look at an earlier screenshot again.",
@@ -308,19 +337,21 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_save_screenshot",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Save Browser Screenshot",
     description:
-      "Return the screenshot's saved original from the attachment library: a capture is already stored permanently on disk, so a normal \"save this\" needs no copy. Without a `path` this verifies and returns the existing absolute file path and attachment ID. Pass `path` only when the user explicitly asked for a separate copy in another place: a full absolute Windows path ending in .png. That copy never overwrites an existing file, never falls back to a default directory and never creates the directory.",
-    promptSnippet: "Return the already-saved screenshot original, or copy it to the one absolute .png path the user named",
+      "Copy an already-saved screenshot from the attachment library to a separate destination file when the user explicitly named one (`path`: a full absolute Windows path ending in .png). A capture from browser_screenshot is already stored permanently on disk, so for a normal \"save this\" or \"keep it\", do NOT call this tool — reply directly with the file path and attachment ID that browser_screenshot already returned. Call this tool without `path` only if no screenshot path/ID from browser_screenshot is visible in the current conversation. That copy never overwrites an existing file, never falls back to a default directory and never creates the directory.",
+    promptSnippet:
+      "Copy an already-saved screenshot to a separate absolute .png path explicitly named by the user",
     promptGuidelines: [
-      "Screenshots are already permanently saved by browser_screenshot. When the user says to save or keep a picture, call browser_screenshot (or this tool without `path`) and report the existing absolute path and ID; do not produce a second copy.",
+      "Screenshots are already permanently saved by browser_screenshot. When the user says to save or keep a picture that was already taken in this conversation, do NOT call browser_save_screenshot and do NOT call browser_screenshot again — reply directly with the existing absolute path and ID.",
       "Use `path` only when the user explicitly names another destination as a full absolute .png path. Never invent one, never pass a directory, and expect a refusal instead of an overwrite when the file exists.",
     ],
     parameters: Type.Object({
       path: Type.Optional(
         Type.String({
           description:
-            "Only for an explicit separate copy: the full absolute destination path ending in .png. Omit to get the already-saved original.",
+            "Full absolute destination path ending in .png when the user explicitly asked for a separate copy in another location. Do not call this tool for a normal save/keep request when you already have the path from browser_screenshot.",
         }),
       ),
     }),
@@ -333,6 +364,7 @@ export default async function piEgoBrowser(pi) {
 
   pi.registerTool({
     name: "browser_handoff",
+    ...(toolExposure === "deferred" ? { exposure: "deferred" } : {}),
     label: "Browser Hand Off",
     description:
       "Hand the current tab to the user for something only a human can do (login, CAPTCHA, 2FA, a manual confirmation), then stop. While the user has control, this session's browser tools refuse to run until the user takes control back from /ego-settings (Resume Browser Control).",
@@ -348,6 +380,44 @@ export default async function piEgoBrowser(pi) {
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       return run(ctx, onUpdate, service.handoff.bind(service), { instruction: params.instruction ?? null });
     },
+  });
+
+  /**
+   * Keep deferred browser tools reachable.
+   *
+   * A deferred tool is only loadable through `tool_search`, so the model needs
+   * that tool active. Three hosts exist: one where `tool_search` is already
+   * active (nothing to do), one where it is registered but not active (add it),
+   * and a reduced host with no `tool_search` at all (keep the nine browser tools
+   * active, so they never go missing). All of it is best-effort: a host without
+   * these registry methods simply skips the check.
+   */
+  const ensureDeferredToolsReachable = () => {
+    if (toolExposure !== "deferred") return;
+    if (
+      typeof pi.getAllTools !== "function" ||
+      typeof pi.getActiveTools !== "function" ||
+      typeof pi.setActiveTools !== "function"
+    ) {
+      return;
+    }
+    try {
+      const active = pi.getActiveTools() || [];
+      if (active.includes("tool_search")) return;
+      const registered = pi.getAllTools() || [];
+      if (registered.some((tool) => tool?.name === "tool_search")) {
+        pi.setActiveTools([...active, "tool_search"]);
+        return;
+      }
+      const missing = BROWSER_TOOL_NAMES.filter((name) => !active.includes(name));
+      if (missing.length) pi.setActiveTools([...active, ...missing]);
+    } catch {
+      // A registry that cannot be read is not a reason to lose browser access.
+    }
+  };
+
+  pi.on?.("session_start", async () => {
+    ensureDeferredToolsReachable();
   });
 
   /**

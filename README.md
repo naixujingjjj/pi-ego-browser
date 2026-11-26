@@ -75,6 +75,16 @@ Just ask: “Open this page, fill in the email, then take a screenshot.” The m
 | `browser_save_screenshot` | Return the already-saved original of a capture; copy it only to the one absolute `.png` path the user names |
 | `browser_handoff` | Give the tab to the user (login, CAPTCHA, 2FA) and pause |
 
+These nine tools are **deferred**: they are not declared to the model until it
+loads them. On a session that never touches a browser that saves about 2,000
+tokens per turn; on one that does, the model calls `tool_search` first (for
+example `query: "browser_open browser_read browser_click browser_fill"`,
+`limit: 10`) and then calls the browser tools directly. The extension checks the
+host at `session_start`: if `tool_search` is registered but not active it is
+activated, and a reduced host with no `tool_search` at all keeps the nine tools
+declared so they cannot go missing. `PI_EGO_TOOL_EXPOSURE=direct` restores the
+old always-declared behaviour.
+
 Commands — one command, no separate `/ego`:
 
 ```
@@ -243,6 +253,7 @@ lookalike file from another directory.
 | `PI_EGO_HEADLESS` | `0` | `1` runs the browser headless (hand-off needs a visible window) |
 | `PI_EGO_NO_SYSTEM_BROWSER` | `0` | `1` skips Edge/Chrome discovery and uses the managed build |
 | `PI_EGO_RUN_TIMEOUT_MS` | `180000` | per-call limit for one Ego script |
+| `PI_EGO_TOOL_EXPOSURE` | `deferred` | `direct` declares the nine `browser_*` tools to the model instead of loading them with `tool_search` |
 
 ## What was verified
 
@@ -254,7 +265,7 @@ what ran inside the development sandbox and what it cannot run):
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Unit + contract suite | `npm run test:unit` | 125 tests: content-addressed publish, dedupe, preferred-directory fallback, ID/root validation, request-time injection, a normal save returning the one original, explicit copies that never overwrite, the `info` panel, the screenshot panel, native-picker pick/cancel/failure, real Pi sessions on a faux provider |
+| Unit + contract suite | `npm run test:unit` | 128 tests: content-addressed publish, dedupe, preferred-directory fallback, ID/root validation, request-time injection, a normal save returning the one original, explicit copies that never overwrite, the `info` panel, the screenshot panel, native-picker pick/cancel/failure, deferred tool exposure and its session-start fallbacks, real Pi sessions on a faux provider |
 | Tarball contents | `npm run pack:check` | required runtime files and licenses included |
 | Packaged entry loads with Pi's own `typebox` / `@earendil-works` mapping | `npm run pack:load` | 9 tools + the single `/ego-settings` command (no `/ego` alias) |
 | Isolated Pi load of the tarball: `pi install` into a throwaway config, then `pi --mode rpc` | `npm run smoke:pi` | the installed package supplies `/ego-settings`, `status` and `attachments` answer against the isolated `PI_EGO_HOME`, bare `/ego-settings` answers outside the TUI, and no removed `/ego` command is visible to Pi |

@@ -111,7 +111,7 @@ function piErrorPayload(error) {
 function piBlocked(payload) {
   PI_ERR(
     "HANDED_TO_USER",
-    "用户正在控制这个浏览器任务空间（ownership=" + payload.ownership + "）；等用户在 Pi 里从 /ego-settings 的「Resume Browser Control」恢复后再继续。",
+    "The user is controlling this browser task space (ownership=" + payload.ownership + "); wait until the user resumes from /ego-settings (Resume Browser Control) in Pi, then continue.",
     { spaceId: payload.id, spaceName: payload.name, ownership: payload.ownership },
   );
 }
@@ -168,8 +168,8 @@ if (piEntry.blocked) {
     PI_ERR(
       piTabs.length ? "NO_SUCH_PAGE" : "NO_PAGE",
       piTabs.length
-        ? "这个任务空间里没有标签页 " + ${JSON.stringify(pageLabel)}
-        : "这个任务空间还没有任何标签页；先用 browser_open 打开一个网址。",
+        ? "This task space has no tab " + ${JSON.stringify(pageLabel)}
+        : "This task space has no tabs yet; call browser_open to open a URL first.",
       { ...(await piSpaceReport(piTask)), tabs: piTabs.map(piDescribeTab) },
     );
   } else {
@@ -191,7 +191,7 @@ if (piEntry.blocked) {
   const piTask = piEntry.task;
   const piTab = await piActiveTab(piTask);
   if (!piTab) {
-    PI_ERR("NO_PAGE", "这个任务空间还没有任何标签页；先用 browser_open 打开一个网址。", await piSpaceReport(piTask));
+    PI_ERR("NO_PAGE", "This task space has no tabs yet; call browser_open to open a URL first.", await piSpaceReport(piTask));
   } else {
     const piPage = await piPageForTab(piTask, piTab);
     const piBefore = await piInfoOf(piPage);
@@ -203,8 +203,8 @@ if (piEntry.blocked) {
     if (piStale) {
       PI_ERR(
         "STALE_PAGE",
-        "编号是为 " + (piExpect.pageLabel || "另一个标签页") + " 在 " + (piExpect.url || "另一个地址") + " 生成的，当前是 " +
-          (piBefore.pageLabel || "无") + " 在 " + (piBefore.url || "无") + "；请重新 browser_read。",
+        "These element numbers were generated for " + (piExpect.pageLabel || "another tab") + " at " + (piExpect.url || "another URL") + ", but the current page is " +
+          (piBefore.pageLabel || "none") + " at " + (piBefore.url || "none") + "; call browser_read again.",
         { ...(await piSpaceReport(piTask)), ...piBefore },
       );
     } else {
@@ -282,7 +282,7 @@ if (piEntry.blocked) {
   const piTask = piEntry.task;
   ${select}
   if (!piFound.tab) {
-    PI_ERR("NO_SUCH_TAB", "找不到要切换的标签页", { tabs: piFound.tabs.map(piDescribeTab) });
+    PI_ERR("NO_SUCH_TAB", "No such tab to switch to", { tabs: piFound.tabs.map(piDescribeTab) });
   } else {
     await piTask.cdp("Target.activateTarget", { targetId: piFound.tab.targetId });
     const piPage = await piPageForTab(piTask, piFound.tab);
@@ -297,7 +297,7 @@ if (piEntry.blocked) {
   const piTask = piEntry.task;
   ${select}
   if (!piFound.tab) {
-    PI_ERR("NO_SUCH_TAB", "找不到要关闭的标签页", { tabs: piFound.tabs.map(piDescribeTab) });
+    PI_ERR("NO_SUCH_TAB", "No such tab to close", { tabs: piFound.tabs.map(piDescribeTab) });
   } else {
     const piPage = await piPageForTab(piTask, piFound.tab);
     const piClosed = piFound.tab.label || null;
@@ -331,8 +331,8 @@ if (piEntry.blocked) {
     PI_ERR(
       piTabs.length ? "NO_SUCH_PAGE" : "NO_PAGE",
       piTabs.length
-        ? "这个任务空间里没有标签页 " + ${JSON.stringify(pageLabel)}
-        : "这个任务空间还没有任何标签页；先用 browser_open 打开一个网址。",
+        ? "This task space has no tab " + ${JSON.stringify(pageLabel)}
+        : "This task space has no tabs yet; call browser_open to open a URL first.",
       { ...(await piSpaceReport(piTask)), tabs: piTabs.map(piDescribeTab) },
     );
   } else {
@@ -379,7 +379,7 @@ export function buildResumeScript({ space }) {
     `const piSpaces = await listTaskSpaces();
 const piWanted = PI_CMD.space && PI_CMD.space.id != null ? piSpaces.find((entry) => entry.id === PI_CMD.space.id) : undefined;
 if (!piWanted) {
-  PI_ERR("SPACE_GONE", "这个 Pi 会话的 Ego 任务空间已经不在了（浏览器或状态目录被清理）。用 browser_open 重新打开页面即可建立新的任务空间。");
+  PI_ERR("SPACE_GONE", "This Pi session's Ego task space is gone (the browser or the state folder was cleaned up). Call browser_open to open a page and create a new task space.");
 } else {
   const piTask =
     piWanted.ownership === "agent"
@@ -389,7 +389,7 @@ if (!piWanted) {
         : await takeOverTaskSpace(piWanted.id);
   const piTab = await piActiveTab(piTask);
   if (!piTab) {
-    PI_ERR("PAGES_CLOSED", "用户关闭了这个任务空间的全部标签页。用 browser_open 重新打开需要的页面。", await piSpaceReport(piTask));
+    PI_ERR("PAGES_CLOSED", "The user closed every tab of this task space. Call browser_open to reopen the pages you need.", await piSpaceReport(piTask));
   } else {
     const piPage = await piPageForTab(piTask, piTab);
     const piSnapshotText = await piPage.snapshot({});

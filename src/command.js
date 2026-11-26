@@ -10,7 +10,7 @@
 //
 // `/ego-settings attachments set <absolute path>` must accept quoted paths and
 // unquoted paths with spaces, because a real Windows directory is often
-// `E:\截图 与 素材\browser shots`. Only the action word is split off; the rest of
+// `E:\Screenshots and assets\browser shots`. Only the action word is split off; the rest of
 // the line is the argument as typed.
 const ACTION = /^(\S+)\s*([\s\S]*)$/;
 

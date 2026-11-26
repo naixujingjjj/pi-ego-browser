@@ -18,7 +18,7 @@ const tui = await import(pathToFileURL(join(piRoot, "node_modules", "@earendil-w
 
 test("a screenshot row shows text only when images are off", async () => {
   const view = createScreenshotView(tui, {
-    text: "附件 abc123… 12 B\n文件：C:/library/abc.png",
+    text: "Attachment abc123… 12 B\nFile: C:/library/abc.png",
     loadImage: () => {
       throw new Error("must not read with images off");
     },
@@ -33,7 +33,7 @@ test("a screenshot row shows text only when images are off", async () => {
 test("an expanded row reads the picture once and then reuses it", async () => {
   let reads = 0;
   const view = createScreenshotView(tui, {
-    text: "附件 abc123…",
+    text: "Attachment abc123…",
     loadImage: () => {
       reads += 1;
       return { data: B64, mimeType: "image/png", filename: "C:/library/abc.png" };
@@ -46,7 +46,7 @@ test("an expanded row reads the picture once and then reuses it", async () => {
   assert.equal(reads, 1, "the image file is read on the first render only");
   assert.deepEqual(first, second);
   const flat = first.join("\n");
-  assert.ok(flat.includes("附件 abc123…"));
+  assert.ok(flat.includes("Attachment abc123…"));
   // This test terminal has no image protocol, so the fallback carries the path.
   assert.ok(/\[Image:.*abc\.png/.test(flat) || flat.includes("abc.png"), `no image fallback in:\n${flat}`);
   view.invalidate();
@@ -55,12 +55,12 @@ test("an expanded row reads the picture once and then reuses it", async () => {
 
 test("an unreadable picture degrades to a warning, not a crash", async () => {
   const view = createScreenshotView(tui, {
-    text: "附件 abc123…",
-    loadImage: () => ({ error: "存储根不可用" }),
+    text: "Attachment abc123…",
+    loadImage: () => ({ error: "storage root unavailable" }),
     theme,
     showImages: true,
   });
   const flat = view.render(60).join("\n");
-  assert.ok(flat.includes("图片不可用"));
-  assert.ok(flat.includes("存储根不可用"));
+  assert.ok(flat.includes("Image unavailable"));
+  assert.ok(flat.includes("storage root unavailable"));
 });

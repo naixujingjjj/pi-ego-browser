@@ -171,11 +171,11 @@ piped stdio. Tests that launch a browser ran on Windows outside that sandbox.
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Whole unit suite in one process | `node test/run-unit.mjs` | 125 tests, 125 pass, 0 fail |
+| Whole unit suite in one process | `node test/run-unit.mjs` | 128 tests, 128 pass, 0 fail |
 | Tarball contents | `npm run pack:check` | required runtime files, licenses and notice files present; no `test/`, `tools/`, `node_modules/` or scratch files |
 | Packaged entry loads with Pi's host packages | `npm run pack:load` | 9 tools, exactly one command `/ego-settings`, `browser_save_screenshot` still takes `path`, packaged `src/` used for the failure paths; the browser call reports `RUNTIME_SPAWN_FAILED` from the same piped-spawn refusal |
 | Isolated real Pi: install + `pi --mode rpc` | `npm run smoke:pi` | ok: `pi install` into `.tmp/iso-pi-smoke/agent` exits 0, the installed package supplies `/ego-settings` (`origin: package`), `get_commands` offers no `ego`, `/ego-settings status`, `/ego-settings attachments` and bare `/ego-settings` all answer (3 handled prompts), no loading problem. Writes `.tmp/iso-pi-smoke/summary.json`. |
-| Unit suite on Windows | `npm test` | 125 pass, including another writer occupying the destination during an explicit copy |
+| Unit suite on Windows | `npm test` | 128 pass, including another writer occupying the destination during an explicit copy |
 | Real browser end to end (phases 1–4) | `node tools\acceptance.mjs` | 26 pass. The final tarball hash and per-step results are in `.tmp/acceptance/summary.json`. |
 | Cross-drive screenshot and save on Windows | Isolated browser state on one drive, attachment library on another | One PNG in the library after capture and two normal saves. Both saves returned its path, the old export directory was absent, and staging was empty. |
 

@@ -152,21 +152,21 @@ export function describeFileError(error) {
   // An AttachmentError already carries a message written for the user.
   if (code && !/^E[A-Z0-9]+$/.test(code)) return String(error?.message || code);
   const known = {
-    ENOENT: "目录不存在，或盘符已脱机",
-    ENOTDIR: "路径的一部分是文件而不是目录",
-    EACCES: "没有写入权限",
-    EPERM: "没有写入权限",
-    EROFS: "所在磁盘是只读的",
-    ENOSPC: "磁盘空间不足",
-    EBUSY: "文件被其他程序占用",
-    EEXIST: "同名文件已存在",
-    EMFILE: "打开的文件过多",
-    EIO: "磁盘读取失败",
-    ENOBUFS: "系统缓冲区不足",
-    EXDEV: "目标在另一块磁盘上",
+    ENOENT: "the folder does not exist, or the drive is offline",
+    ENOTDIR: "part of the path is a file, not a folder",
+    EACCES: "no write permission",
+    EPERM: "no write permission",
+    EROFS: "the drive is read-only",
+    ENOSPC: "not enough free space",
+    EBUSY: "another program is holding the file",
+    EEXIST: "a file with that name already exists",
+    EMFILE: "too many open files",
+    EIO: "the disk read failed",
+    ENOBUFS: "not enough system buffers",
+    EXDEV: "the destination is on another drive",
   };
-  const label = known[code] || String(error?.message || error || "未知错误");
-  return code ? `${label}（${code}）` : label;
+  const label = known[code] || String(error?.message || error || "unknown error");
+  return code ? `${label} (${code})` : label;
 }
 
 function statOf(path) {
@@ -248,21 +248,21 @@ function sameDevice(a, b) {
 export function publishStagedPng({ stagingFile, rootPath, forceCopy = false, createRoot = true }) {
   const info = statOf(stagingFile);
   if (!info?.isFile()) {
-    throw new AttachmentError("ATTACHMENT_MISSING", "暂存文件不在了，无法保存这张截图。", { stagingFile });
+    throw new AttachmentError("ATTACHMENT_MISSING", "The staging file is gone, so this screenshot cannot be saved.", { stagingFile });
   }
-  if (info.size === 0) throw new AttachmentError("ATTACHMENT_EMPTY", "截图是空文件。", { stagingFile });
-  if (!isPngFile(stagingFile)) throw new AttachmentError("ATTACHMENT_NOT_PNG", "截图不是 PNG 文件。", { bytes: info.size });
+  if (info.size === 0) throw new AttachmentError("ATTACHMENT_EMPTY", "The screenshot file is empty.", { stagingFile });
+  if (!isPngFile(stagingFile)) throw new AttachmentError("ATTACHMENT_NOT_PNG", "The screenshot is not a PNG file.", { bytes: info.size });
 
   const id = sha256FileSync(stagingFile);
   const resolvedRoot = normalizeRootPath(rootPath);
   const rootInfo = statOf(resolvedRoot);
   if (rootInfo && !rootInfo.isDirectory()) {
-    throw new AttachmentError("ATTACHMENT_PATH_IS_FILE", `“${resolvedRoot}”现在是一个文件，不是目录。`, { path: resolvedRoot });
+    throw new AttachmentError("ATTACHMENT_PATH_IS_FILE", `"${resolvedRoot}" is a file, not a folder.`, { path: resolvedRoot });
   }
   if (!rootInfo && !createRoot) {
     throw new AttachmentError(
       "ATTACHMENT_ROOT_UNAVAILABLE",
-      `附件库 ${resolvedRoot} 现在不可用：目录不存在，或盘符 / 挂载点离线。`,
+      `The attachment library ${resolvedRoot} is unavailable right now: the folder does not exist, or the drive / mount point is offline.`,
       { path: resolvedRoot },
     );
   }
@@ -281,7 +281,7 @@ export function publishStagedPng({ stagingFile, rootPath, forceCopy = false, cre
   if (existsSync(target)) {
     const existing = statOf(target);
     if (!existing?.isFile() || existing.size !== info.size || sha256FileSync(target) !== id) {
-      throw new AttachmentError("ATTACHMENT_CORRUPT", `附件库里已有 ${id.slice(0, 12)}…，但内容和 ID 不符。`, { path: target });
+      throw new AttachmentError("ATTACHMENT_CORRUPT", `The attachment library already holds ${id.slice(0, 12)}…, but its content does not match the ID.`, { path: target });
     }
     removeQuietly(stagingFile);
     return result(true);
@@ -324,7 +324,7 @@ export function publishStagedPng({ stagingFile, rootPath, forceCopy = false, cre
     }
     throw new AttachmentError(
       "ATTACHMENT_PUBLISH_FAILED",
-      `写入附件库 ${resolvedRoot} 失败：${describeFileError(second)}`,
+      `Writing to the attachment library ${resolvedRoot} failed: ${describeFileError(second)}`,
       { path: resolvedRoot, reason: describeFileError(second), cause: String(second?.code || "") },
     );
   }
@@ -440,11 +440,11 @@ export class AttachmentLibrary {
     const info = statOf(rootPath);
     if (!info) {
       if (!create) {
-        throw new AttachmentError("ATTACHMENT_MISSING", "目录不存在，或盘符已脱机", { path: rootPath });
+        throw new AttachmentError("ATTACHMENT_MISSING", "the folder does not exist, or the drive is offline", { path: rootPath });
       }
       mkdirSync(rootPath, { recursive: true });
     } else if (!info.isDirectory()) {
-      throw new AttachmentError("ATTACHMENT_PATH_IS_FILE", "这个路径是一个文件，不是目录", { path: rootPath });
+      throw new AttachmentError("ATTACHMENT_PATH_IS_FILE", "this path is a file, not a folder", { path: rootPath });
     }
     const libraryDir = ensureLibraryDir(rootPath);
     const probe = join(libraryDir, STAGING, `probe-${process.pid}-${randomUUID()}.tmp`);
@@ -513,7 +513,7 @@ export class AttachmentLibrary {
     if (!chosen) {
       throw new AttachmentError(
         "ATTACHMENT_UNWRITABLE",
-        `附件库不可写，这张截图无法保存：\n${failures.map((entry) => `- ${entry.path}：${entry.reason}`).join("\n")}\n在 /ego-settings 里用「Screenshot Folder」换一个位置（非交互环境：/ego-settings attachments set <可写目录>），或修好上面的目录后重试。`,
+        `The attachment library is not writable, so this screenshot cannot be saved:\n${failures.map((entry) => `- ${entry.path}: ${entry.reason}`).join("\n")}\nPick another location with Screenshot Folder in /ego-settings (headless: /ego-settings attachments set <writable path>), or fix the folders above and retry.`,
         { failures },
       );
     }
@@ -527,7 +527,7 @@ export class AttachmentLibrary {
     } catch (error) {
       throw new AttachmentError(
         "ATTACHMENT_UNWRITABLE",
-        `本机暂存区 ${stagingDir} 不可写（${describeFileError(error)}）；这张截图无法保存。`,
+        `The local staging folder ${stagingDir} is not writable (${describeFileError(error)}), so this screenshot cannot be saved.`,
         { path: stagingDir, reason: describeFileError(error), failures },
       );
     }
@@ -562,7 +562,7 @@ export class AttachmentLibrary {
       return publishStagedPng({ stagingFile, rootPath, createRoot });
     } catch (error) {
       if (error instanceof AttachmentError) throw error;
-      throw new AttachmentError("ATTACHMENT_PUBLISH_FAILED", `写入附件库 ${rootPath} 失败：${describeFileError(error)}`, {
+      throw new AttachmentError("ATTACHMENT_PUBLISH_FAILED", `Writing to the attachment library ${rootPath} failed: ${describeFileError(error)}`, {
         path: rootPath,
         reason: describeFileError(error),
         cause: String(error?.code || ""),
@@ -605,7 +605,7 @@ export class AttachmentLibrary {
       } catch (fallbackError) {
         throw new AttachmentError(
           "ATTACHMENT_UNWRITABLE",
-          `附件库 ${preferredRoot} 写入失败（${describeFileError(error)}），默认库 ${defaultDir} 也写入失败（${describeFileError(fallbackError)}）；这张截图没有保存。`,
+          `The attachment library ${preferredRoot} failed (${describeFileError(error)}) and so did the default library ${defaultDir} (${describeFileError(fallbackError)}); this screenshot was not saved.`,
           { path: preferredRoot, reason: describeFileError(error), fallbackPath: defaultDir, fallbackReason: describeFileError(fallbackError) },
         );
       }
@@ -643,11 +643,11 @@ export class AttachmentLibrary {
   locate(ref) {
     const id = String(ref?.id ?? "").trim().toLowerCase();
     if (!OBJECT_ID.test(id)) {
-      return { ok: false, code: "ATTACHMENT_ID_INVALID", message: `附件 ID 形状不对（应是 64 位小写十六进制）：${String(ref?.id ?? "").slice(0, 80)}` };
+      return { ok: false, code: "ATTACHMENT_ID_INVALID", message: `The attachment ID has the wrong shape (expected 64 lowercase hex characters): ${String(ref?.id ?? "").slice(0, 80)}` };
     }
     const rootId = String(ref?.rootId ?? "").trim().toLowerCase();
     if (!ROOT_ID.test(rootId)) {
-      return { ok: false, code: "ATTACHMENT_ROOT_INVALID", message: `附件存储根 ID 形状不对：${String(ref?.rootId ?? "").slice(0, 80)}` };
+      return { ok: false, code: "ATTACHMENT_ROOT_INVALID", message: `The attachment storage root ID has the wrong shape: ${String(ref?.rootId ?? "").slice(0, 80)}` };
     }
     const roots = this.roots();
     const root = roots[rootId];
@@ -655,29 +655,29 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_ROOT_UNKNOWN",
-        message: `附件存储根 ${rootId} 没有登记（本机附件库登记里没有它），无法定位；不会去别的目录找同名文件。`,
+        message: `The attachment storage root ${rootId} is not registered on this machine, so it cannot be located; no other folder is searched for a file of the same name.`,
       };
     }
     let rootPath;
     try {
       rootPath = normalizeRootPath(root.path);
     } catch (error) {
-      return { ok: false, code: "ATTACHMENT_ROOT_INVALID", message: `附件存储根 ${rootId} 登记的路径无效：${root.path}`, path: root.path };
+      return { ok: false, code: "ATTACHMENT_ROOT_INVALID", message: `The path registered for the attachment storage root ${rootId} is invalid: ${root.path}`, path: root.path };
     }
     if (rootIdFor(rootPath) !== rootId) {
-      return { ok: false, code: "ATTACHMENT_ROOT_INVALID", message: `附件存储根 ${rootId} 的登记内容和路径 ${rootPath} 对不上，拒绝使用。`, path: rootPath };
+      return { ok: false, code: "ATTACHMENT_ROOT_INVALID", message: `The registration of the attachment storage root ${rootId} does not match its path ${rootPath}; refusing to use it.`, path: rootPath };
     }
     const objectsDir = join(rootPath, LIBRARY_VERSION, OBJECTS);
     const path = objectPathOf(rootPath, id);
     const within = relative(objectsDir, path);
     if (!within || within.startsWith("..") || isAbsolute(within)) {
-      return { ok: false, code: "ATTACHMENT_ID_INVALID", message: `附件 ${id.slice(0, 12)}… 的路径超出存储根，拒绝使用。` };
+      return { ok: false, code: "ATTACHMENT_ID_INVALID", message: `The path of attachment ${id.slice(0, 12)}… leaves its storage root; refusing to use it.` };
     }
     if (!statOf(rootPath)?.isDirectory()) {
       return {
         ok: false,
         code: "ATTACHMENT_MISSING",
-        message: `附件 ${id.slice(0, 12)}… 的存储根 ${rootPath} 现在不可用：目录不存在，或盘符 / 挂载点离线。原文件还在时恢复目录即可，不会去别的目录找同名文件。`,
+        message: `The storage root ${rootPath} of attachment ${id.slice(0, 12)}… is unavailable right now: the folder does not exist, or the drive / mount point is offline. Restore the folder if the original file is still there; no other folder is searched for a file of the same name.`,
         path,
         rootId,
         rootPath,
@@ -688,16 +688,16 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_MISSING",
-        message: `附件 ${id.slice(0, 12)}… 不在存储根 ${rootPath} 里：文件不存在（可能被删除，或盘符 / 挂载点离线）。`,
+        message: `Attachment ${id.slice(0, 12)}… is not inside the storage root ${rootPath}: the file does not exist (it may have been deleted, or the drive / mount point is offline).`,
         path,
         rootId,
         rootPath,
       };
     }
     if (!info.isFile()) {
-      return { ok: false, code: "ATTACHMENT_MISSING", message: `附件 ${id.slice(0, 12)}… 的位置 ${path} 不是一个文件。`, path, rootId, rootPath };
+      return { ok: false, code: "ATTACHMENT_MISSING", message: `The location ${path} of attachment ${id.slice(0, 12)}… is not a file.`, path, rootId, rootPath };
     }
-    if (info.size <= 0) return { ok: false, code: "ATTACHMENT_EMPTY", message: `附件 ${id.slice(0, 12)}… 是空文件。`, path, rootId, rootPath };
+    if (info.size <= 0) return { ok: false, code: "ATTACHMENT_EMPTY", message: `Attachment ${id.slice(0, 12)}… is an empty file.`, path, rootId, rootPath };
 
     let realPath;
     let realRoot;
@@ -708,7 +708,7 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_UNREADABLE",
-        message: `附件 ${id.slice(0, 12)}… 的真实路径无法解析：${describeFileError(error)}`,
+        message: `The real path of attachment ${id.slice(0, 12)}… cannot be resolved: ${describeFileError(error)}`,
         path,
         rootId,
         rootPath,
@@ -719,7 +719,7 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_OUTSIDE_ROOT",
-        message: `附件 ${id.slice(0, 12)}… 的真实路径 ${realPath} 超出了登记的存储根 ${rootPath}（junction / symlink），拒绝读取。`,
+        message: `The real path ${realPath} of attachment ${id.slice(0, 12)}… leaves the registered storage root ${rootPath} (junction / symlink); refusing to read it.`,
         path,
         realPath,
         rootId,
@@ -744,7 +744,7 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_UNREADABLE",
-        message: `附件 ${shortId(located.id)}… 读取失败：${describeFileError(error)}`,
+        message: `Reading attachment ${shortId(located.id)}… failed: ${describeFileError(error)}`,
         path: located.path,
       };
     }
@@ -752,7 +752,7 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_CORRUPT",
-        message: `附件 ${shortId(located.id)}… 的内容和它的 ID 对不上，拒绝使用（${located.path}）。`,
+        message: `The content of attachment ${shortId(located.id)}… does not match its ID; refusing to use it (${located.path}).`,
         path: located.path,
       };
     }
@@ -771,7 +771,7 @@ export class AttachmentLibrary {
       return {
         ok: false,
         code: "ATTACHMENT_TOO_LARGE",
-        message: `附件 ${shortId(located.id)}… 有 ${located.bytes} 字节，超过行内显示的 ${maxBytes} 字节上限；图片仍在附件库里，可以按路径打开，或明确另存到用户指定的目标。`,
+        message: `Attachment ${shortId(located.id)}… has ${located.bytes} bytes, over the ${maxBytes}-byte inline display limit; the image is still in the attachment library, so it can be opened by path or explicitly copied to a destination the user named.`,
         path: located.path,
         bytes: located.bytes,
       };
@@ -780,17 +780,17 @@ export class AttachmentLibrary {
     try {
       data = readFileSync(located.path);
     } catch (error) {
-      return { ok: false, code: "ATTACHMENT_UNREADABLE", message: `附件 ${shortId(located.id)}… 读取失败：${describeFileError(error)}`, path: located.path };
+      return { ok: false, code: "ATTACHMENT_UNREADABLE", message: `Reading attachment ${shortId(located.id)}… failed: ${describeFileError(error)}`, path: located.path };
     }
     if (sha256Hex(data) !== located.id) {
       return {
         ok: false,
         code: "ATTACHMENT_CORRUPT",
-        message: `附件 ${shortId(located.id)}… 的内容和它的 ID 对不上，拒绝使用（${located.path}）。`,
+        message: `The content of attachment ${shortId(located.id)}… does not match its ID; refusing to use it (${located.path}).`,
         path: located.path,
       };
     }
-    if (!isPng(data)) return { ok: false, code: "ATTACHMENT_NOT_PNG", message: `附件 ${shortId(located.id)}… 不是 PNG。`, path: located.path };
+    if (!isPng(data)) return { ok: false, code: "ATTACHMENT_NOT_PNG", message: `Attachment ${shortId(located.id)}… is not a PNG.`, path: located.path };
     return { ...located, bytes: data.length, data };
   }
 
@@ -826,10 +826,10 @@ export class AttachmentLibrary {
     }
     const before = statOf(path);
     if (before && !before.isDirectory()) {
-      return { ok: false, path, reason: "这个路径是一个文件，不是目录", code: "ATTACHMENT_PATH_IS_FILE" };
+      return { ok: false, path, reason: "this path is a file, not a folder", code: "ATTACHMENT_PATH_IS_FILE" };
     }
     if (!before && !create) {
-      return { ok: false, path, reason: "目录不存在，或盘符已脱机", code: "ATTACHMENT_MISSING", objects: null };
+      return { ok: false, path, reason: "the folder does not exist, or the drive is offline", code: "ATTACHMENT_MISSING", objects: null };
     }
     try {
       this.#useLibraryDir(path, { create });

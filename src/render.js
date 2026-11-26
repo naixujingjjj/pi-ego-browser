@@ -39,7 +39,7 @@ export function createScreenshotView(tui, { text, loadImage, theme, showImages =
         if (image) {
           lines.push("", ...image.render(width));
         } else if (lastFailure) {
-          lines.push("", theme.fg("warning", `图片不可用：${lastFailure}`));
+          lines.push("", theme.fg("warning", `Image unavailable: ${lastFailure}`));
         }
       }
       return lines;

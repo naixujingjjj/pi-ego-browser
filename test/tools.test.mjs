@@ -155,7 +155,7 @@ test("navigation after a click invalidates the numbering", async () => {
     await service.read({ sessionKey: "s3" });
     const click = await service.click({ sessionKey: "s3", target: "#1" });
     assert.equal(click.ok, true);
-    assert.match(click.text, /页面已跳转/);
+    assert.match(click.text, /The page navigated/);
     phase = "done";
     assert.equal(phase, "done");
     const after = await service.click({ sessionKey: "s3", target: "#1" });
@@ -191,7 +191,7 @@ test("tabs switching invalidates numbering and lists the session's tabs", async 
     await service.read({ sessionKey: "s4" });
     const switched = await service.tabs({ sessionKey: "s4", action: "switch", pageLabel: "p2" });
     assert.equal(switched.ok, true);
-    assert.match(switched.text, /已切换到 p2/);
+    assert.match(switched.text, /Switched to p2/);
     assert.match(switched.text, /p1 .*http:\/\/a\//);
     const listed = await service.tabs({ sessionKey: "s4", action: "list" });
     assert.equal(listed.ok, true);
@@ -216,9 +216,9 @@ test("a capture publishes a content-addressed attachment and leaves no staging f
 
     const first = await service.screenshot({ sessionKey });
     assert.equal(first.ok, true);
-    assert.match(first.text, /附件库/);
-    assert.match(first.text, /附件 ID/);
-    assert.match(first.text, /不需要再另存/);
+    assert.match(first.text, /attachment library/i);
+    assert.match(first.text, /Attachment ID/);
+    assert.match(first.text, /no second copy is needed/);
     assert.equal(first.image, undefined, "a screenshot result must not carry image bytes");
     assert.equal(first.details.saved, true, "a capture is saved, not temporary");
     assert.equal(first.details.attachment.id, createHash("sha256").update(PNG).digest("hex"));
@@ -254,7 +254,7 @@ test("identical captures are stored once and a normal save returns that original
     const second = await service.screenshot({ sessionKey });
     assert.equal(second.details.attachment.id, first.details.attachment.id);
     assert.equal(second.details.deduped, true);
-    assert.match(second.text, /没有多存一份/);
+    assert.match(second.text, /no second copy was stored/);
     assert.equal(readdirSync(join(paths.attachmentsDir, "v1", "objects")).length, 1);
 
     // "Save this" without a destination is the original, not a copy.
@@ -263,7 +263,7 @@ test("identical captures are stored once and a normal save returns that original
     assert.equal(saved.details.path, second.details.path);
     assert.equal(saved.details.savedOriginal, true);
     assert.equal(saved.details.copied, undefined, "a normal save must not copy anything");
-    assert.match(saved.text, /原件已经在附件库/);
+    assert.match(saved.text, /original is already in the attachment library/);
     assert.deepEqual(readFileSync(saved.details.path), PNG);
     assert.deepEqual(readFileSync(second.details.path), PNG, "the library object stays available after a save");
     assert.equal(existsSync(join(temp.dir, "screenshots")), false, "no export directory is created by a save");
@@ -336,7 +336,7 @@ test("an explicit destination is the only thing copied, and it is never overwrit
     // directory is missing is refused instead of being resolved or created.
     const relative = service.saveScreenshot({ sessionKey, path: "shots/copy.png" });
     assert.equal(relative.code, "ATTACHMENT_PATH_INVALID");
-    assert.match(relative.message, /绝对路径/);
+    assert.match(relative.message, /absolute path/);
     const wrongType = service.saveScreenshot({ sessionKey, path: join(destinationDir, "copy.jpg") });
     assert.equal(wrongType.code, "ATTACHMENT_PATH_INVALID");
     assert.match(wrongType.message, /\.png/);
@@ -402,7 +402,7 @@ test("a broken preferred directory falls back, and the recovered one is used aga
     assert.equal(second.ok, true);
     assert.ok(second.details.path.startsWith(paths.attachmentsDir), "the fallback capture lands in the default library");
     assert.ok(second.details.fallback?.reason);
-    assert.match(second.text, /首选目录/);
+    assert.match(second.text, /preferred folder/i);
     const summary = service.attachments({ sessionKey });
     assert.match(summary.text, /Preferred folder is not writable/);
     assert.match(summary.text, /Default folder is writable/);
@@ -479,7 +479,7 @@ test("lookback accepts only this session's attachment IDs", async () => {
     const looked = service.reviewScreenshot({ sessionKey, id });
     assert.equal(looked.ok, true);
     assert.equal(looked.details.review, true);
-    assert.match(looked.text, /不写进会话/);
+    assert.match(looked.text, /never written into the conversation/);
     assert.equal(looked.details.attachment.id, id);
 
     const prefix = service.reviewScreenshot({ sessionKey, id: id.slice(0, 12) });
@@ -513,11 +513,11 @@ test("handoff pauses the session until resume", async () => {
       }
       return { ok: true, spaceId: 5, pageLabel: "p1", url: "http://a/", title: "A", handedOff: true, visible: true, tabs: [] };
     });
-    const handoff = await service.handoff({ sessionKey: "s6", instruction: "请把邮箱填成 a@b.c" });
+    const handoff = await service.handoff({ sessionKey: "s6", instruction: "fill the email field with a@b.c" });
     assert.equal(handoff.ok, true);
     assert.match(handoff.text, /\/ego-settings/);
     assert.match(handoff.text, /Resume Browser Control/);
-    assert.match(handoff.text, /请把邮箱填成 a@b\.c/);
+    assert.match(handoff.text, /fill the email field with a@b\.c/);
     assert.equal(calls, 1);
 
     const refused = await service.open({ sessionKey: "s6", url: "http://b/" });
@@ -554,7 +554,7 @@ test("an uncertain click reports the late-effects hint", async () => {
     }));
     const outcome = await service.click({ sessionKey: "s7", target: "css=button" });
     assert.equal(outcome.ok, false);
-    assert.match(outcome.message, /结果不确定/);
+    assert.match(outcome.message, /Uncertain result/);
     assert.equal(outcome.details.mayHaveLateEffects, true);
   } finally {
     temp.cleanup();
@@ -595,7 +595,7 @@ function toolResultEntry(ref, toolName = "browser_screenshot") {
       toolCallId: `call-${ref.id.slice(0, 8)}`,
       toolName,
       isError: false,
-      content: [{ type: "text", text: `附件 ID：${ref.id}` }],
+      content: [{ type: "text", text: `Attachment ID: ${ref.id}` }],
       details: { attachment: { ...ref }, path: null },
       timestamp: 1,
     },
@@ -662,7 +662,7 @@ test("a prefix shared by two different screenshots is refused instead of opening
     const ambiguous = service.reviewScreenshot({ sessionKey, id: "deadbeef" });
     assert.equal(ambiguous.ok, false);
     assert.equal(ambiguous.code, "ATTACHMENT_ID_AMBIGUOUS");
-    assert.match(ambiguous.message, /同时匹配/);
+    assert.match(ambiguous.message, /matches 2 different screenshots/);
     assert.equal(service.attachmentFile({ sessionKey, id: "deadbeef" }).code, "ATTACHMENT_ID_AMBIGUOUS");
 
     // One more character names exactly one digest; it then fails on the file, not on the prefix.

@@ -135,7 +135,7 @@ export class SessionStore {
       return {
         kind: "stale",
         code: STALE_NO_SNAPSHOT,
-        message: `这个会话还没有可用的元素编号（${record.invalidReason || "上次变化后没有再读取"}）；先 browser_read 读取页面。`,
+        message: `This session has no usable element numbers yet (${record.invalidReason || "nothing has been read since the last change"}); call browser_read to read the page first.`,
       };
     }
     const item = snapshot.items.find((entry) => entry.n === wanted);
@@ -143,14 +143,14 @@ export class SessionStore {
       return {
         kind: "stale",
         code: STALE_UNKNOWN_NUMBER,
-        message: `编号 #${wanted} 不在最近一次读取结果里（这次只印了 #1..#${snapshot.items.length}）；先 browser_read。`,
+        message: `Element number #${wanted} is not in the latest read (that read printed only #1..#${snapshot.items.length}); call browser_read first.`,
       };
     }
     if (record.pageLabel !== snapshot.pageLabel || record.url !== snapshot.url) {
       return {
         kind: "stale",
         code: STALE_PAGE_CHANGED,
-        message: `编号 #${wanted} 是为 ${snapshot.pageLabel} 在 ${snapshot.url} 生成的，而当前会话在 ${record.pageLabel || "无标签页"} 的 ${record.url || "无地址"}；先 browser_read。`,
+        message: `Element number #${wanted} was generated for ${snapshot.pageLabel} at ${snapshot.url}, but this session is now on ${record.pageLabel || "no tab"} at ${record.url || "no URL"}; call browser_read first.`,
       };
     }
     return {

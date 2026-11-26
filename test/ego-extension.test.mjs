@@ -33,7 +33,7 @@ function stagedExtension() {
 }
 
 let counter = 0;
-async function loadExtension({ stateRoot, env = {} }) {
+async function loadExtension({ stateRoot, env = {}, hostTools = [] }) {
   const entry = stagedExtension();
   const environment = {
     PI_EGO_HOME: stateRoot,
@@ -50,7 +50,7 @@ async function loadExtension({ stateRoot, env = {} }) {
     previous[key] = process.env[key];
     process.env[key] = String(value);
   }
-  const api = createFakePi();
+  const api = createFakePi([], { hostTools });
   const module = await import(`${pathToFileURL(entry).href}?unit=${(counter += 1)}`);
   await module.default(api);
   const restore = () => {
@@ -103,6 +103,11 @@ function publishShot(stateRoot, sessionKey, bytes = PNG) {
   return { paths, service, library, ref: ingested.ref, path: ingested.path };
 }
 
+/** Emit `session_start` and let every handler finish, like a real session. */
+async function startSession(api) {
+  for (const handler of api.handlers.get("session_start") || []) await handler({ type: "session_start", reason: "startup" }, {});
+}
+
 test("the extension registers every browser tool and only the /ego-settings command", async () => {
   const stateRoot = freshDir(join(ROOT, ".tmp", "unit-extension-state", "tools"));
   const { api, restore } = await loadExtension({ stateRoot });
@@ -127,6 +132,75 @@ test("the extension registers every browser tool and only the /ego-settings comm
     }
   } finally {
     restore();
+  }
+});
+
+test("browser tools are deferred by default and direct on request", async () => {
+  const stateRoot = freshDir(join(ROOT, ".tmp", "unit-extension-state", "exposure"));
+  const deferred = await loadExtension({ stateRoot });
+  try {
+    for (const name of [
+      "browser_open",
+      "browser_read",
+      "browser_click",
+      "browser_fill",
+      "browser_tabs",
+      "browser_screenshot",
+      "browser_show_screenshot",
+      "browser_save_screenshot",
+      "browser_handoff",
+    ]) {
+      assert.equal(deferred.api.tools.get(name).exposure, "deferred", `${name} is deferred by default`);
+      assert.equal(deferred.api.getActiveTools().includes(name), false, `${name} is not declared until tool_search loads it`);
+    }
+  } finally {
+    deferred.restore();
+  }
+
+  const direct = await loadExtension({ stateRoot, env: { PI_EGO_TOOL_EXPOSURE: "direct" } });
+  try {
+    for (const [name, definition] of direct.api.tools) {
+      assert.equal(definition.exposure, undefined, `${name} is declared directly with PI_EGO_TOOL_EXPOSURE=direct`);
+      assert.equal(direct.api.getActiveTools().includes(name), true, `${name} is active when declared directly`);
+    }
+  } finally {
+    direct.restore();
+  }
+});
+
+test("session_start keeps deferred tools reachable in every host shape", async () => {
+  const stateRoot = freshDir(join(ROOT, ".tmp", "unit-extension-state", "exposure-reachable"));
+
+  // tool_search is registered but inactive: the self-check activates it.
+  const inactive = await loadExtension({ stateRoot, hostTools: [{ name: "tool_search", defaultActive: false }] });
+  try {
+    assert.equal(inactive.api.getActiveTools().includes("tool_search"), false);
+    await startSession(inactive.api);
+    assert.equal(inactive.api.getActiveTools().includes("tool_search"), true, "tool_search is activated for deferred tools");
+    assert.equal(inactive.api.getActiveTools().includes("browser_open"), false, "the browser tools stay deferred");
+  } finally {
+    inactive.restore();
+  }
+
+  // tool_search is already active: nothing about the active set changes.
+  const already = await loadExtension({ stateRoot, hostTools: [{ name: "tool_search" }] });
+  try {
+    const before = already.api.getActiveTools();
+    await startSession(already.api);
+    assert.deepEqual(already.api.getActiveTools(), before);
+  } finally {
+    already.restore();
+  }
+
+  // A reduced host has no tool_search at all: the browser tools stay active.
+  const reduced = await loadExtension({ stateRoot });
+  try {
+    await startSession(reduced.api);
+    const active = reduced.api.getActiveTools();
+    assert.equal(active.includes("tool_search"), false);
+    for (const [name] of reduced.api.tools) assert.equal(active.includes(name), true, `${name} stays reachable without tool_search`);
+  } finally {
+    reduced.restore();
   }
 });
 
@@ -522,7 +596,7 @@ test("the context hook attaches this turn's picture for a vision model only", as
         toolCallId: "call-1",
         toolName: "browser_screenshot",
         isError: false,
-        content: [{ type: "text", text: `附件 ID：${published.ref.id}` }],
+        content: [{ type: "text", text: `Attachment ID: ${published.ref.id}` }],
         details: { attachment, path: published.path },
         timestamp: 2,
       },
@@ -572,7 +646,7 @@ test("a screenshot row shows its ID and path, and reads the image only when expa
     const published = publishShot(stateRoot, sessionKey);
     const definition = api.tools.get("browser_screenshot");
     const result = {
-      content: [{ type: "text", text: "截图已保存在附件库（原件就在下面这个文件里，不需要再另存一份）。" }],
+      content: [{ type: "text", text: "Screenshot saved to the attachment library: the original is the file below, so no second copy is needed." }],
       details: {
         attachment: {
           schemaVersion: 1,
@@ -592,15 +666,15 @@ test("a screenshot row shows its ID and path, and reads the image only when expa
     const collapsed = definition.renderResult(result, { expanded: false, isPartial: false }, theme, { showImages: true });
     const collapsedText = collapsed.render(240).join("\n");
     assert.ok(collapsedText.includes(shortId(published.ref.id)));
-    assert.ok(collapsedText.split("\n").some((line) => line.includes("文件：")), `no file line in:\n${collapsedText}`);
+    assert.ok(collapsedText.split("\n").some((line) => line.includes("File: ")), `no file line in:\n${collapsedText}`);
     assert.ok(collapsedText.includes(`${published.ref.id}.png`), `no file name in:\n${collapsedText}`);
-    assert.ok(collapsedText.includes("展开"));
+    assert.ok(collapsedText.includes("Expand"));
     assert.equal(collapsedText.includes("[Image:"), false);
 
     const expanded = definition.renderResult(result, { expanded: true, isPartial: false }, theme, { showImages: true });
     const expandedText = expanded.render(240).join("\n");
     assert.ok(/\[Image:.*objects/.test(expandedText), `no image fallback in:\n${expandedText}`);
-    assert.ok(expandedText.includes("截图已保存在附件库"));
+    assert.ok(expandedText.includes("Screenshot saved to the attachment library"));
 
     const hidden = definition.renderResult(result, { expanded: true, isPartial: false }, theme, { showImages: false });
     assert.equal(hidden.render(240).join("\n").includes("[Image:"), false);
@@ -627,14 +701,14 @@ test("browser_save_screenshot returns the saved original and copies only to a na
     assert.equal(saved.isError, undefined);
     assert.equal(saved.details.path, published.path);
     assert.equal(saved.details.savedOriginal, true);
-    assert.match(saved.text, /原件已经在附件库/);
+    assert.match(saved.text, /original is already in the attachment library/);
     assert.equal(existsSync(join(stateRoot, "screenshots")), false, "a normal save creates no export directory");
     assert.deepEqual(readFileSync(published.path), PNG);
 
     // A destination the user names is the only thing copied.
-    const targetDir = join(stateRoot, "用户 另存", "pictures");
+    const targetDir = join(stateRoot, "user copy", "pictures");
     mkdirSync(targetDir, { recursive: true });
-    const target = join(targetDir, "页面.png");
+    const target = join(targetDir, "page.png");
     const copied = await callTool(api, "browser_save_screenshot", { path: target }, ctx);
     assert.equal(copied.isError, undefined, copied.text);
     assert.equal(copied.details.path, target);

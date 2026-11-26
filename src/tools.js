@@ -62,18 +62,18 @@ function removeScreenshotFile(file) {
  */
 function normalizeCopyTarget(value) {
   const text = String(value ?? "").trim();
-  if (!text) throw new AttachmentError("ATTACHMENT_PATH_INVALID", "另存需要一个完整的目标路径。");
+  if (!text) throw new AttachmentError("ATTACHMENT_PATH_INVALID", "A copy needs a full destination path.");
   const expanded = text.replace(/^~(?=$|[\\/])/, () => homedir());
   const { root } = parse(expanded);
   if (!isAbsolute(expanded) || (process.platform === "win32" && root.length === 1)) {
-    throw new AttachmentError("ATTACHMENT_PATH_INVALID", `另存的目标必须是绝对路径，收到的是“${text}”。`);
+    throw new AttachmentError("ATTACHMENT_PATH_INVALID", `The copy destination must be an absolute path; received "${text}".`);
   }
   if (process.platform === "win32" && expanded.slice(root.length).includes(":")) {
-    throw new AttachmentError("ATTACHMENT_PATH_INVALID", "另存的目标必须是普通 PNG 文件路径。");
+    throw new AttachmentError("ATTACHMENT_PATH_INVALID", "The copy destination must be a plain PNG file path.");
   }
   const resolved = resolve(expanded);
   if (!/\.png$/i.test(resolved)) {
-    throw new AttachmentError("ATTACHMENT_PATH_INVALID", `另存的目标要以 .png 结尾：${resolved}`);
+    throw new AttachmentError("ATTACHMENT_PATH_INVALID", `The copy destination must end in .png: ${resolved}`);
   }
   return resolved;
 }
@@ -119,9 +119,9 @@ export function hardStopOf(result) {
     ok: false,
     code: "HANDED_TO_USER",
     message:
-      "用户正在控制这个浏览器任务空间。等用户处理完并在 Pi 里从 /ego-settings 的「Resume Browser Control」恢复后再继续；现在不要重试。\n（Ego 原文：" +
+      "The user is controlling this browser task space. Wait until the user finishes and resumes from /ego-settings (Resume Browser Control), then continue; do not retry now.\n(Ego said: " +
       text.trim().split("\n")[0] +
-      "）",
+      ")",
     details: { handedOff: true, hardStop: true },
   };
 }
@@ -209,7 +209,7 @@ export class BrowserService {
       ok: false,
       code: "HANDED_TO_USER",
       message:
-        "用户正在控制这个浏览器任务空间。等用户处理完并在 Pi 里从 /ego-settings 的「Resume Browser Control」恢复后再继续；现在不要重试。",
+        "The user is controlling this browser task space. Wait until the user finishes and resumes from /ego-settings (Resume Browser Control), then continue; do not retry now.",
       details: { handedOff: true, url: record.url, pageLabel: record.pageLabel },
     };
   }
@@ -263,7 +263,7 @@ export class BrowserService {
     const space = this.#spaceDetails(result);
     return {
       ok: true,
-      text: `已打开 ${result.title || "(无标题)"}\n地址：${result.url}\n标签页：${result.pageLabel || "?"}（任务空间 ${result.spaceId ?? "?"}，共 ${result.tabs?.length ?? 1} 个标签页）\n下一步：browser_read 读取页面元素编号。`,
+      text: `Opened ${result.title || "(untitled)"}\nURL: ${result.url}\nTab: ${result.pageLabel || "?"} (task space ${result.spaceId ?? "?"}, ${result.tabs?.length ?? 1} tabs)\nNext: call browser_read before clicking or filling to get element numbers; skip browser_read if you only need a screenshot.`,
       details: space,
     };
   }
@@ -285,11 +285,11 @@ export class BrowserService {
       seq,
       items: numbered.items,
     });
-    const header = `[${result.pageLabel || "page"} · ${result.url || "?"} · ${result.title || "(无标题)"}]\n[编号 #1..#${numbered.items.length} 只对这次读取的页面状态有效；页面跳转或标签页切换后要重新 browser_read]`;
+    const header = `[${result.pageLabel || "page"} · ${result.url || "?"} · ${result.title || "(untitled)"}]\n[Element numbers #1..#${numbered.items.length} are valid only for the page state of this read; read again after a navigation or a tab switch]`;
     const body = truncate(`${header}\n${numbered.text}`);
     return {
       ok: true,
-      text: `${body.text}\n[读取完成：${numbered.items.length} 个可操作编号，第 ${seq} 次读取]`,
+      text: `${body.text}\n[Read complete: ${numbered.items.length} actionable element numbers, read #${seq}]`,
       details: {
         ...this.#spaceDetails(result),
         seq,
@@ -334,10 +334,10 @@ export class BrowserService {
     if (result.ok === false) return this.#actionFailure(key, result, resolved);
     this.#bindResult(key, result);
     const navigated = Boolean(result.navigated);
-    if (navigated) this.store.invalidateSnapshot(key, "页面已跳转");
+    if (navigated) this.store.invalidateSnapshot(key, "the page navigated");
     return {
       ok: true,
-      text: `已点击 ${resolved.number ? `#${resolved.number}` : resolved.value}（${result.pageLabel || "?"}）\n当前：${result.title || "(无标题)"} · ${result.url}${navigated ? "\n页面已跳转，编号已失效，下一步先 browser_read。" : ""}`,
+      text: `Clicked ${resolved.number ? `#${resolved.number}` : resolved.value} (${result.pageLabel || "?"})\nNow: ${result.title || "(untitled)"} · ${result.url}${navigated ? "\nThe page navigated, so element numbers are stale; call browser_read next." : ""}`,
       details: { ...this.#spaceDetails(result), navigated, target: resolved.number ? `#${resolved.number}` : resolved.value, receipt: result.receipt ?? null },
     };
   }
@@ -361,10 +361,10 @@ export class BrowserService {
     );
     if (result.ok === false) return this.#actionFailure(key, result, resolved);
     this.#bindResult(key, result);
-    if (result.navigated) this.store.invalidateSnapshot(key, "页面已跳转");
+    if (result.navigated) this.store.invalidateSnapshot(key, "the page navigated");
     return {
       ok: true,
-      text: `已填写 ${resolved.number ? `#${resolved.number}` : resolved.value}（${resolved.role || "element"}${resolved.name ? ` "${resolved.name}"` : ""}）\n当前：${result.title || "(无标题)"} · ${result.url}`,
+      text: `Filled ${resolved.number ? `#${resolved.number}` : resolved.value} (${resolved.role || "element"}${resolved.name ? ` "${resolved.name}"` : ""})\nNow: ${result.title || "(untitled)"} · ${result.url}`,
       details: { ...this.#spaceDetails(result), target: resolved.number ? `#${resolved.number}` : resolved.value, navigated: Boolean(result.navigated) },
     };
   }
@@ -372,14 +372,14 @@ export class BrowserService {
   #actionFailure(key, result, resolved) {
     const staleHint = /stale|not found|no such|detached|element/i.test(`${result.code} ${result.message}`);
     if (staleHint) {
-      this.store.invalidateSnapshot(key, "元素编号可能已失效");
+      this.store.invalidateSnapshot(key, "element numbers are possibly stale");
     }
     const failure = this.#failure(result);
     const hint =
       result.code === "EGO_PAGE_UNRESPONSIVE" || result.mayHaveLateEffects
-        ? "\n结果不确定：动作可能已经生效。先 browser_read 看页面当前状态，再决定是否重试。"
+        ? "\nUncertain result: the action may already have taken effect. Call browser_read to see the current page state before deciding whether to retry."
         : staleHint
-          ? "\n编号或元素可能已失效：先 browser_read 重新读取页面。"
+          ? "\nThe element number or the element itself may be stale: call browser_read to read the page again."
           : "";
     return {
       ...failure,
@@ -396,31 +396,31 @@ export class BrowserService {
     const result = await this.#run(key, buildTabsScript({ space: this.#spaceFor(record), action, url, pageLabel, index }));
     if (result.ok === false) return this.#failure(result);
     this.#bindResult(key, result);
-    if (action !== "list") this.store.invalidateSnapshot(key, "标签页已变化");
+    if (action !== "list") this.store.invalidateSnapshot(key, "the tabs changed");
     const tabLines = (result.tabs || [])
-      .map((tab, position) => `  ${position}: ${tab.label || "(未管理)"} ${tab.active ? "← 当前" : ""} ${tab.title || ""} ${tab.url || ""}`.trimEnd())
+      .map((tab, position) => `  ${position}: ${tab.label || "(unmanaged)"} ${tab.active ? "← active" : ""} ${tab.title || ""} ${tab.url || ""}`.trimEnd())
       .join("\n");
-    const labels = `标签页（任务空间 ${result.spaceId ?? "?"}）：\n${tabLines || "  （空）"}`;
+    const labels = `Tabs (task space ${result.spaceId ?? "?"}):\n${tabLines || "  (none)"}`;
     if (action === "list") {
       return { ok: true, text: labels, details: { ...this.#spaceDetails(result), labels: result.labels || [] } };
     }
     if (action === "new") {
       return {
         ok: true,
-        text: `已新建标签页 ${result.pageLabel || "?"}：${result.url || "about:blank"}\n${labels}\n编号已失效，下一步先 browser_read。`,
+        text: `Opened new tab ${result.pageLabel || "?"}: ${result.url || "about:blank"}\n${labels}\nElement numbers are stale now; call browser_read next.`,
         details: { ...this.#spaceDetails(result), created: true },
       };
     }
     if (action === "switch") {
       return {
         ok: true,
-        text: `已切换到 ${result.pageLabel || "?"}：${result.title || ""} ${result.url || ""}\n${labels}\n编号已失效，下一步先 browser_read。`,
+        text: `Switched to ${result.pageLabel || "?"}: ${result.title || ""} ${result.url || ""}\n${labels}\nElement numbers are stale now; call browser_read next.`,
         details: { ...this.#spaceDetails(result), activated: true },
       };
     }
     return {
       ok: true,
-      text: `已关闭 ${result.closed || "标签页"}\n${labels}\n编号已失效，下一步先 browser_read。`,
+      text: `Closed ${result.closed || "the tab"}\n${labels}\nElement numbers are stale now; call browser_read next.`,
       details: { ...this.#spaceDetails(result), closed: result.closed || null },
     };
   }
@@ -444,7 +444,7 @@ export class BrowserService {
       return {
         ok: false,
         code: error?.code || "ATTACHMENT_UNWRITABLE",
-        message: error?.message || "附件库不可写，无法保存截图。",
+        message: error?.message || "The attachment library is not writable, so the screenshot could not be saved.",
         details: { attachment: null, ...(error?.details || {}) },
       };
     }
@@ -458,7 +458,7 @@ export class BrowserService {
       if (result.ok === false) return this.#failure(result);
       const captured = statSync(staged.stagingFile, { throwIfNoEntry: false });
       if (!captured?.isFile() || captured.size === 0) {
-        return { ok: false, code: "SCREENSHOT_UNAVAILABLE", message: "浏览器没有生成可用的截图。" };
+        return { ok: false, code: "SCREENSHOT_UNAVAILABLE", message: "The browser produced no usable screenshot." };
       }
 
       const ingested = this.ingestCapture({
@@ -476,17 +476,17 @@ export class BrowserService {
       const ref = ingested.ref;
       const fallback = ingested.fallback;
       const lines = [
-        "截图已保存在附件库（原件就在下面这个文件里，不需要再另存一份）。",
-        `附件 ID：${ref.id}`,
-        `文件：${ingested.path}`,
-        `页面：${ref.title || "(无标题)"} · ${ref.url || "?"}${ref.pageLabel ? `（标签页 ${ref.pageLabel}）` : ""}`,
-        `大小：${formatBytes(ref.bytes)}；存储根：${ref.rootId}`,
-        ingested.deduped ? "同一画面已经在附件库里，没有多存一份。" : "",
+        "Screenshot saved to the attachment library: the original is the file below, so no second copy is needed.",
+        `Attachment ID: ${ref.id}`,
+        `File: ${ingested.path}`,
+        `Page: ${ref.title || "(untitled)"} · ${ref.url || "?"}${ref.pageLabel ? ` (tab ${ref.pageLabel})` : ""}`,
+        `Size: ${formatBytes(ref.bytes)}; storage root: ${ref.rootId}`,
+        ingested.deduped ? "The same image was already in the attachment library; no second copy was stored." : "",
         fallback
-          ? `首选目录 ${fallback.path} 这次不可用（${fallback.reason}），这张写进了 ${ingested.rootPath}；首选设置保留，目录恢复后下次截图会继续用它。`
+          ? `The preferred folder ${fallback.path} was unavailable this time (${fallback.reason}), so this capture went to ${ingested.rootPath}; the preferred setting is kept and will be used again once that folder is back.`
           : "",
-        "用户说「保存这张」时这就是原件：回答上面的路径即可，不要再复制一份。只有用户明确要求存到别的目录并给出完整 .png 路径时，才用 browser_save_screenshot { path }。",
-        "要回看本会话旧截图：browser_show_screenshot（模型）；用户可在 /ego-settings 的「Session Screenshots」里打开。",
+        "When the user says to save this, this is the original: reply with the path above and do not copy it again. Only when the user explicitly asks for a copy in another folder and gives a full .png path, use browser_save_screenshot { path }.",
+        "To look at an older screenshot of this session: browser_show_screenshot (model); the user can open it under Session Screenshots in /ego-settings.",
       ].filter(Boolean);
       return {
         ok: true,
@@ -524,7 +524,7 @@ export class BrowserService {
       return {
         ok: false,
         code: error?.code || "ATTACHMENT_UNWRITABLE",
-        message: error?.message || "这张截图没有保存成功。",
+        message: error?.message || "This screenshot was not saved.",
         details: { attachment: null, ...(error?.details || {}) },
       };
     }
@@ -570,14 +570,14 @@ export class BrowserService {
         return {
           ok: false,
           code: original.code || "ATTACHMENT_UNAVAILABLE",
-          message: `没有找到这张截图的原件：${original.message}`,
+          message: `Could not find the original of this screenshot: ${original.message}`,
           details: { attachment: attachmentDetails(ref), path: original.path || null },
         };
       }
     } else {
       const cached = this.#legacyPreviewFile(key);
       if (!cached) {
-        return { ok: false, code: "NO_SCREENSHOT", message: "当前会话没有可保存的截图，请先 browser_screenshot。" };
+        return { ok: false, code: "NO_SCREENSHOT", message: "This session has no screenshot to save; call browser_screenshot first." };
       }
       // Publish through the ordinary capture path so the library in effect now
       // (preferred directory, or the default with its usual fallback) holds the
@@ -591,7 +591,7 @@ export class BrowserService {
         return {
           ok: false,
           code: error?.code || "ATTACHMENT_UNWRITABLE",
-          message: `这张 0.1.1 预览没有保存成功：${error?.message || describeFileError(error)}`,
+          message: `This 0.1.1 preview could not be saved: ${error?.message || describeFileError(error)}`,
         };
       }
       const ingested = this.ingestCapture({ sessionKey: key, staged });
@@ -602,7 +602,7 @@ export class BrowserService {
         return {
           ok: false,
           code: original.code || "ATTACHMENT_UNAVAILABLE",
-          message: `这张 0.1.1 预览已经写入附件库，但现在读不到：${original.message}`,
+          message: `This 0.1.1 preview was written to the attachment library but cannot be read now: ${original.message}`,
           details: { attachment: attachmentDetails(ref), path: original.path || null },
         };
       }
@@ -613,10 +613,10 @@ export class BrowserService {
       return {
         ok: true,
         text: [
-          `截图原件已经在附件库：${original.path}`,
-          `附件 ID：${ref.id}`,
-          ...(legacy ? ["（这张来自 0.1.1 的预览；已经复制进附件库，旧缓存文件没有改动。）"] : []),
-          "这就是要保存的原件：没有复制第二份。只有用户明确要求存到其它目录时，才用带完整 .png 路径的另存。",
+          `The screenshot original is already in the attachment library: ${original.path}`,
+          `Attachment ID: ${ref.id}`,
+          ...(legacy ? ["(This one is a 0.1.1 preview; it was copied into the attachment library and the old cache file is unchanged.)"] : []),
+          "This is the original to save: no second copy was made. Only an explicit request for another folder uses a copy with a full .png path.",
         ].join("\n"),
         details: {
           attachment: attachmentDetails(ref),
@@ -658,14 +658,14 @@ export class BrowserService {
       return {
         ok: false,
         code: error?.code || "ATTACHMENT_PATH_INVALID",
-        message: `没有另存：${error?.message || `目标路径无效：${target}`}`,
+        message: `Not copied: ${error?.message || `invalid destination path: ${target}`}`,
         details: { attachment: attachmentDetails(ref), path: null },
       };
     }
     if (destination.toLowerCase() === normalizeRootPath(original.path).toLowerCase()) {
       return {
         ok: true,
-        text: `这个文件就是附件库里的原件：${original.path}\n附件 ID：${ref.id}`,
+        text: `This file is the original in the attachment library: ${original.path}\nAttachment ID: ${ref.id}`,
         details: { attachment: attachmentDetails(ref), path: original.path, saved: true, savedOriginal: true, bytes: original.bytes },
       };
     }
@@ -675,7 +675,7 @@ export class BrowserService {
         return {
           ok: false,
           code: "ATTACHMENT_PATH_IS_FILE",
-          message: `另存的目标 ${destination} 已经存在，而且不是文件；没有覆盖。`,
+          message: `The copy destination ${destination} already exists and is not a file; nothing was overwritten.`,
           details: { attachment: attachmentDetails(ref), path: destination },
         };
       }
@@ -688,14 +688,14 @@ export class BrowserService {
       if (digest === original.id) {
         return {
           ok: true,
-          text: `这张截图已经在这个文件里：${destination}\n附件 ID：${ref.id}；原件仍在 ${original.path}`,
+          text: `This screenshot is already in this file: ${destination}\nAttachment ID: ${ref.id}; the original is still at ${original.path}`,
           details: { attachment: attachmentDetails(ref), path: destination, saved: true, copied: true, reused: true, bytes: original.bytes },
         };
       }
       return {
         ok: false,
         code: "ATTACHMENT_EXISTS",
-        message: `另存的目标 ${destination} 已经存在，内容和这张截图不同；没有覆盖。换一个文件名再试。`,
+        message: `The copy destination ${destination} already exists with different content; nothing was overwritten. Try another file name.`,
         details: { attachment: attachmentDetails(ref), path: destination },
       };
     }
@@ -704,7 +704,7 @@ export class BrowserService {
       return {
         ok: false,
         code: "ATTACHMENT_MISSING",
-        message: `另存的目标目录不存在：${directory}。先建好目录，再给出完整的 .png 路径；不会替你创建目录。`,
+        message: `The copy destination folder does not exist: ${directory}. Create it first, then give a full .png path; this tool does not create folders.`,
         details: { attachment: attachmentDetails(ref), path: destination },
       };
     }
@@ -717,7 +717,7 @@ export class BrowserService {
       closeSync(fd);
       copyFileSync(original.path, temporary);
       if (sha256FileSync(temporary) !== original.id) {
-        throw new AttachmentError("ATTACHMENT_CORRUPT", "另存的文件内容和附件 ID 对不上。");
+        throw new AttachmentError("ATTACHMENT_CORRUPT", "The copied file's content does not match the attachment ID.");
       }
       try {
         linkSync(temporary, destination);
@@ -732,8 +732,8 @@ export class BrowserService {
         ok: false,
         code: occupied ? "ATTACHMENT_EXISTS" : error?.code || "ATTACHMENT_COPY_FAILED",
         message: occupied
-          ? `另存的目标 ${destination} 在这期间出现了；没有覆盖。换一个文件名再试。`
-          : `另存失败：${describeFileError(error)}（目标 ${destination}）`,
+          ? `The copy destination ${destination} appeared in the meantime; nothing was overwritten. Try another file name.`
+          : `Copy failed: ${describeFileError(error)} (destination ${destination})`,
         details: { attachment: attachmentDetails(ref), path: destination },
       };
     } finally {
@@ -742,9 +742,9 @@ export class BrowserService {
     return {
       ok: true,
       text: [
-        `已另存一份：${destination}`,
-        `附件 ID：${ref.id}；原件仍在附件库：${original.path}`,
-        ...(legacy ? ["（这张来自 0.1.1 的预览；旧缓存文件没有改动。）"] : []),
+        `Copied to: ${destination}`,
+        `Attachment ID: ${ref.id}; the original stays in the attachment library: ${original.path}`,
+        ...(legacy ? ["(This one is a 0.1.1 preview; the old cache file is unchanged.)"] : []),
       ].join("\n"),
       details: {
         attachment: attachmentDetails(ref),
@@ -796,8 +796,8 @@ export class BrowserService {
     const defaultDir = library.defaultDir();
     const preferred = config.preferred;
     const probes = [];
-    if (preferred) probes.push({ role: "首选", ...library.probe(preferred, { create: false }) });
-    probes.push({ role: "默认", ...library.probe(defaultDir, { create: true }) });
+    if (preferred) probes.push({ role: "preferred", ...library.probe(preferred, { create: false }) });
+    probes.push({ role: "default", ...library.probe(defaultDir, { create: true }) });
     const roots = Object.values(library.roots());
     const refs = Array.isArray(record.attachments) && record.attachments.length
       ? record.attachments
@@ -812,7 +812,7 @@ export class BrowserService {
     if (config.invalid) lines.push(`Invalid preferred folder (${config.invalid}: ${config.error || "expected an absolute path"}). Using the default folder.`);
     for (const probe of probes) {
       const counts = probe.objects ? `, ${probe.objects.objects} screenshots / ${formatBytes(probe.objects.bytes)}` : "";
-      lines.push(`${probe.role === "首选" ? "Preferred" : "Default"} folder ${probe.ok ? "is writable" : "is not writable"}: ${probe.path}${probe.ok ? counts : ` (${probe.reason})`}`);
+      lines.push(`${probe.role === "preferred" ? "Preferred" : "Default"} folder ${probe.ok ? "is writable" : "is not writable"}: ${probe.path}${probe.ok ? counts : ` (${probe.reason})`}`);
     }
     lines.push(`Registered library folders:${roots.length ? "" : " (none)"}`);
     for (const root of roots) lines.push(`  ${root.id} → ${root.path} (${root.kind})`);
@@ -932,12 +932,12 @@ export class BrowserService {
     return {
       ok: true,
       text: [
-        `回看附件 ${shortId(ref.id)}…（${formatBytes(ref.bytes)}）`,
-        `文件：${located.path}`,
-        `页面：${ref.title || "(无标题)"} · ${ref.url || "?"}`,
-        `存储根：${ref.rootId}（${located.rootPath}）`,
-        "视觉模型会在本次用户轮的下一批模型请求里看到这张图：挂在这次工具结果上，不写进会话。",
-        "纯文字模型只拿到上面的路径和 ID；你自己的窗口可以在 /ego-settings 的「Session Screenshots」里按 ID 打开它。",
+        `Looking up attachment ${shortId(ref.id)}… (${formatBytes(ref.bytes)})`,
+        `File: ${located.path}`,
+        `Page: ${ref.title || "(untitled)"} · ${ref.url || "?"}`,
+        `Storage root: ${ref.rootId} (${located.rootPath})`,
+        "A vision model sees this image in the next model requests of this user turn: it is attached to this tool result and never written into the conversation.",
+        "A text-only model gets the path and ID above only; your own window can open it by ID under Session Screenshots in /ego-settings.",
       ].join("\n"),
       details: { attachment: attachmentDetails(ref), path: located.path, review: true },
     };
@@ -960,7 +960,7 @@ export class BrowserService {
     if (record.handedOff) {
       return {
         ok: true,
-        text: `浏览器已经交给用户，正在等待用户在 /ego-settings 里选「Resume Browser Control」。\n当前页面：${record.title || ""} ${record.url || ""}`,
+        text: `The browser is handed to the user; waiting for the user to choose Resume Browser Control in /ego-settings.\nCurrent page: ${record.title || ""} ${record.url || ""}`,
         details: { handedOff: true, alreadyHandedOff: true },
       };
     }
@@ -974,18 +974,18 @@ export class BrowserService {
       title: result.title ?? record.title,
       handedOff: true,
     });
-    this.store.invalidateSnapshot(key, "控制权已交给用户");
+    this.store.invalidateSnapshot(key, "control was handed to the user");
     // The runtime's task.handOff() returns nothing, so visibility comes from
     // how this extension launched the browser, not from the call's reply.
     const visible = !this.paths.headless;
     return {
       ok: true,
       text: [
-        "已把浏览器交给用户。",
-        `当前页面：${result.title || "(无标题)"} · ${result.url || "?"}（标签页 ${result.pageLabel || "?"}）`,
-        instruction ? `请用户处理：${instruction}` : "请用户在浏览器窗口里完成需要人工的步骤。",
-        visible ? "" : "注意：浏览器是无头模式，用户看不到窗口；设置 PI_EGO_HEADLESS=0 后重启 Pi 才能交给用户操作。",
-        "用户完成后在 Pi 里打开 /ego-settings，选「Resume Browser Control」，再继续任务；在此之前不要再调用浏览器工具。",
+        "The browser is handed to the user.",
+        `Current page: ${result.title || "(untitled)"} · ${result.url || "?"} (tab ${result.pageLabel || "?"})`,
+        instruction ? `Ask the user to handle: ${instruction}` : "Ask the user to complete the manual steps in the browser window.",
+        visible ? "" : "Note: the browser runs headless, so the user cannot see the window; set PI_EGO_HEADLESS=0 and restart Pi before handing it over.",
+        "When the user is done, open /ego-settings, choose Resume Browser Control, and continue the task; do not call browser tools before that.",
       ]
         .filter(Boolean)
         .join("\n"),

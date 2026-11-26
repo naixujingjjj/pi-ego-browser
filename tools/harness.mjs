@@ -66,13 +66,22 @@ export function stageSourcePackage(targetDir, root = resolve(import.meta.dirname
   return targetDir;
 }
 
-/** Fake ExtensionAPI good enough to run the packaged extension without a model. */
-export function createFakePi(notices = []) {
+/**
+ * Fake ExtensionAPI good enough to run the packaged extension without a model.
+ *
+ * The tool registry mirrors Pi closely enough for the deferred-tool checks:
+ * `getAllTools()` answers with `{ name, exposure }` records, `getActiveTools()`
+ * with the names currently declared, and `setActiveTools()` replaces that set.
+ * `hostTools` is what the host itself provides (`tool_search`, …) — registered
+ * tools are added on top, exactly like Pi does for a directly declared tool.
+ */
+export function createFakePi(notices = [], { hostTools = [] } = {}) {
   const tools = new Map();
   const commands = new Map();
   const events = [];
   const handlers = new Map();
   const executed = [];
+  const activeNames = new Set(hostTools.filter((tool) => tool.defaultActive !== false).map((tool) => tool.name));
   const api = {
     tools,
     commands,
@@ -86,6 +95,8 @@ export function createFakePi(notices = []) {
     },
     registerTool(definition) {
       tools.set(definition.name, definition);
+      // Pi declares an extension tool unless its exposure keeps it undeclared.
+      if ((definition.exposure ?? "direct") === "direct") activeNames.add(definition.name);
     },
     registerCommand(name, definition) {
       commands.set(name, definition);
@@ -99,8 +110,15 @@ export function createFakePi(notices = []) {
     appendEntry() {},
     setSessionName() {},
     getSessionName: () => null,
-    getActiveTools: () => [...tools.keys()],
-    getAllTools: () => [...tools.keys()],
+    getActiveTools: () => [...activeNames],
+    getAllTools: () => [
+      ...hostTools.map((tool) => ({ exposure: "direct", ...tool })),
+      ...[...tools.values()].map((tool) => ({ name: tool.name, exposure: tool.exposure ?? "direct" })),
+    ],
+    setActiveTools(names) {
+      activeNames.clear();
+      for (const name of names || []) activeNames.add(name);
+    },
     async exec(command, args = [], options = {}) {
       executed.push({ command, args, options });
       return { stdout: "", stderr: "", code: 0, killed: false };

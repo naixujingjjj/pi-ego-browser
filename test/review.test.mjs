@@ -239,7 +239,7 @@ test("two different digests sharing a prefix are refused instead of opening the 
   assert.equal(ambiguous.ok, false);
   assert.equal(ambiguous.code, "ATTACHMENT_ID_AMBIGUOUS");
   assert.equal(ambiguous.ids.length, 2);
-  assert.match(ambiguous.message, /同时匹配/);
+  assert.match(ambiguous.message, /matches 2 different screenshots/);
 
   // One more character makes it unique again.
   assert.equal(selectSessionReference([first, second], "deadbeef1").id, first.id);

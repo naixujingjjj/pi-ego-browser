@@ -106,13 +106,13 @@ test("a non-PNG or empty staging file is refused and cleaned up", async () => {
     const { library } = libraryFor(temp);
     const notPng = library.prepareCapture();
     writeFileSync(notPng.stagingFile, "not a png at all");
-    assert.throws(() => library.commitCapture(notPng, {}), /not PNG|不是 PNG|ATTACHMENT_NOT_PNG/);
+    assert.throws(() => library.commitCapture(notPng, {}), /not a PNG|ATTACHMENT_NOT_PNG/);
     library.discardStaging(notPng);
     assert.equal(existsSync(notPng.stagingFile), false);
 
     const empty = library.prepareCapture();
     writeFileSync(empty.stagingFile, Buffer.alloc(0));
-    assert.throws(() => library.commitCapture(empty, {}), /空文件|ATTACHMENT_EMPTY|EMPTY/);
+    assert.throws(() => library.commitCapture(empty, {}), /empty|ATTACHMENT_EMPTY|EMPTY/);
     library.discardStaging(empty);
     assert.deepEqual(stagingFiles(library), []);
   } finally {
@@ -283,7 +283,7 @@ test("references resolve only through the root registry and are verified by dige
     const unknownRoot = library.locate({ id: ref.id, rootId: "r-0000000000000000" });
     assert.equal(unknownRoot.ok, false);
     assert.equal(unknownRoot.code, "ATTACHMENT_ROOT_UNKNOWN");
-    assert.match(unknownRoot.message, /不会去别的目录找/);
+    assert.match(unknownRoot.message, /no other folder is searched/);
 
     const badRootId = library.locate({ id: ref.id, rootId: "..\\..\\windows" });
     assert.equal(badRootId.code, "ATTACHMENT_ROOT_INVALID");
@@ -311,7 +311,7 @@ test("references resolve only through the root registry and are verified by dige
     const missing = library.locate(ref);
     assert.equal(missing.ok, false);
     assert.equal(missing.code, "ATTACHMENT_MISSING");
-    assert.match(missing.message, /离线|不存在/);
+    assert.match(missing.message, /offline|does not exist/);
   } finally {
     temp.cleanup();
   }
@@ -410,7 +410,7 @@ test("a preferred directory that disappears is not recreated, and the capture st
 
     const probed = library.probe(preferred);
     assert.equal(probed.ok, false);
-    assert.match(probed.reason, /不存在|离线/);
+    assert.match(probed.reason, /does not exist|offline/);
     assert.equal(existsSync(preferred), false, "a status probe must not recreate the preferred path");
 
     const staged = library.prepareCapture();
@@ -452,7 +452,7 @@ test("an offline original fails clearly and resolves again when the drive return
     const located = library.locate(committed.ref);
     assert.equal(located.ok, false);
     assert.equal(located.code, "ATTACHMENT_MISSING");
-    assert.match(located.message, /离线|不存在/);
+    assert.match(located.message, /offline|does not exist/);
     assert.equal(library.verify(committed.ref).code, "ATTACHMENT_MISSING");
     assert.equal(library.load(committed.ref).ok, false);
     assert.equal(existsSync(preferred), false, "resolving must not recreate the missing root");
@@ -483,8 +483,8 @@ test("a large screenshot is stored, verified and only limited inline", async () 
     const inline = library.load(committed.ref, { maxBytes: MAX_INLINE_ATTACHMENT_BYTES });
     assert.equal(inline.ok, false);
     assert.equal(inline.code, "ATTACHMENT_TOO_LARGE");
-    assert.match(inline.message, /按路径打开/);
-    assert.match(inline.message, /另存/);
+    assert.match(inline.message, /opened by path/);
+    assert.match(inline.message, /copied to a destination the user named/);
     assert.equal(inline.data, undefined, "an oversized picture is not read for an inline surface");
 
     const loaded = library.load(committed.ref);
@@ -519,7 +519,7 @@ test("a junction inside the library cannot point a reference outside its root", 
       const loaded = library.load(committed.ref);
       assert.equal(loaded.ok, false, "a junction to another directory must not be read");
       assert.equal(loaded.code, "ATTACHMENT_OUTSIDE_ROOT");
-      assert.match(loaded.message, /超出了登记的存储根/);
+      assert.match(loaded.message, /leaves the registered storage root/);
     } finally {
       rmSync(objectsDir, { recursive: true, force: true });
       renameSync(displaced, objectsDir);

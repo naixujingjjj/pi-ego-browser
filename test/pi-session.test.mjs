@@ -67,7 +67,7 @@ function fixtureCaptureFactory() {
           return { content: [{ type: "text", text: ingested.message }], details: { attachment: null }, isError: true };
         }
         return {
-          content: [{ type: "text", text: `附件 ID：${ingested.ref.id}\n文件：${ingested.path}` }],
+          content: [{ type: "text", text: `Attachment ID: ${ingested.ref.id}\nFile: ${ingested.path}` }],
           details: { attachment: attachmentDetails(ingested.ref), path: ingested.path, temporary: true },
         };
       },
@@ -120,6 +120,9 @@ test("a Pi session with a vision model: small transcript, this turn's picture on
       PI_EGO_BROWSER_PATH: join(stateRoot, "no-such-browser.exe"),
       PI_EGO_DEBUG_PORT: PORT,
       PI_EGO_RUN_TIMEOUT_MS: "5000",
+      // The fixture calls the tools directly, so they must be declared: deferred
+      // exposure is covered by the extension tests instead of a scripted call.
+      PI_EGO_TOOL_EXPOSURE: "direct",
     },
   });
 
@@ -194,6 +197,9 @@ test("two captures in one assistant message share a timestamp and keep their ord
       PI_EGO_BROWSER_PATH: join(stateRoot, "no-such-browser.exe"),
       PI_EGO_DEBUG_PORT: PORT,
       PI_EGO_RUN_TIMEOUT_MS: "5000",
+      // The fixture calls the tools directly, so they must be declared: deferred
+      // exposure is covered by the extension tests instead of a scripted call.
+      PI_EGO_TOOL_EXPOSURE: "direct",
     },
   });
   try {
@@ -246,6 +252,9 @@ test("a text-only model keeps the text form and never receives image bytes", asy
       PI_EGO_BROWSER_PATH: join(stateRoot, "no-such-browser.exe"),
       PI_EGO_DEBUG_PORT: PORT,
       PI_EGO_RUN_TIMEOUT_MS: "5000",
+      // The fixture calls the tools directly, so they must be declared: deferred
+      // exposure is covered by the extension tests instead of a scripted call.
+      PI_EGO_TOOL_EXPOSURE: "direct",
     },
   });
   try {
@@ -261,7 +270,7 @@ test("a text-only model keeps the text form and never receives image bytes", asy
     assertSmallTranscript(file);
     const results = toolResults(sessionEntries(file));
     assert.equal(results.length, 1);
-    assert.match(results[0].message.content[0].text, /附件 ID：/);
+    assert.match(results[0].message.content[0].text, /Attachment ID: /);
   } finally {
     pi.dispose();
   }
@@ -277,6 +286,9 @@ test("two sessions and a fresh process resolve their own references and share on
     PI_EGO_BROWSER_PATH: join(stateRoot, "no-such-browser.exe"),
     PI_EGO_DEBUG_PORT: PORT,
     PI_EGO_RUN_TIMEOUT_MS: "5000",
+    // The fixture calls the tools directly, so they must be declared: deferred
+    // exposure is covered by the extension tests instead of a scripted call.
+    PI_EGO_TOOL_EXPOSURE: "direct",
   };
   const sessionA = await createFauxSession({
     workDir: join(stateRoot, "work-a"),
